@@ -44,9 +44,9 @@ Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « Hotwire SERVO »), 
 
 ### Entrée sécurité
 
-| Fonction | Connecteur | GPIO | Caractéristique          |
-|----------|------------|-----:|--------------------------|
-| E-Stop   | **WD-DET** | GP22 | Opto-couplé sur la carte |
+| Fonction | Connecteur | Broche signal | GPIO | Caractéristique          |
+|----------|------------|---------------|-----:|--------------------------|
+| E-Stop   | **WD-DET** | `P_S`         | GP22 | Opto-couplé sur la carte |
 
 GND disponible sur tous les connecteurs (broche dédiée ou rail commun).
 
@@ -77,32 +77,40 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 
 ## Câblage du bouton E-Stop
 
-Topologie **fail-safe** : le bouton (contact normalement fermé, NF) est mis en série avec la **LED de l'opto-coupleur** de la SKR Pico. La LED est alimentée au repos. Une rupture de câble doit éteindre la LED, exactement comme un appui sur le bouton.
+Bouton-poussoir momentané, normalement ouvert (NO) : convention « appui = déclenche l'alarme ». Câblage minimaliste, deux fils entre le bouton et le connecteur WD-DET de la SKR Pico.
 
-> **Important** : le connecteur WD-DET n'expose **pas** GP22 directement. GP22 est l'entrée du MCU côté **sortie** du phototransistor de l'opto, totalement interne à la carte. Côté connecteur, vous accédez à la LED de l'opto et à des rails d'alimentation. Le brochage exact des trois broches accessibles (anode opto via résistance de limitation interne, GND, +5V) est à confirmer sur le schéma officiel BTT SKR Pico v1.0 — les sérigraphies varient selon les lots.
+Brochage du connecteur WD-DET (3 broches, sérigraphie BTT SKR Pico v1.0, vérifié sur le pinout officiel `BTT SKR Pico V1.0-PIN.pdf` du dépôt BigTreeTech) :
 
-Câblage type, en notant les broches du connecteur par leur fonction :
+| Broche silkscreen | Rôle                                              |
+|-------------------|---------------------------------------------------|
+| `12/24V`          | Alim active (capteur), non utilisée ici — laisser libre |
+| `GND`             | Masse                                             |
+| `P_S`             | Signal (Probe Signal), routé en interne vers GP22 |
+
+Câblage :
 
 ```
-+5V (broche WD-DET) ─── bouton NF ─── broche "anode opto" du WD-DET
-GND (broche WD-DET) ─── (commun, masse SKR Pico)
+SKR Pico WD-DET           Bouton coup-de-poing
++-----------+             (contact momentané NO)
+| 12/24V    |  (libre)
+| GND   ----+-------------+
+| P_S   ----+--------+    |
++-----------+        |    |
+                    [bouton NO]
+                  fermé sur appui,
+                  ouvert au repos
 ```
 
-**Au repos** (bouton armé, contact fermé) : le 5 V drive un courant à travers la LED de l'opto via la résistance de limitation interne (~5–10 mA). Le phototransistor conduit, ce qui tire GP22 à la masse côté MCU. grblHAL lit `signals.e_stop = 0` → pas d'alarme.
+Comportement attendu :
 
-**Sur appui sur le bouton OU rupture de câble** : la LED s'éteint, le phototransistor bloque, GP22 remonte à `1` via le pull-up interne. grblHAL lit `signals.e_stop = 1` → `Alarm:1` (E-Stop) et coupe la chauffe immédiatement.
-
-C'est cette polarité « LED ON au repos, OFF en alarme » qui rend le système intrinsèquement sûr face à une rupture de câble — un câble simplement débranché doit déclencher l'alarme, pas la masquer.
+- **Au repos** (bouton relâché, contact ouvert) : `P_S` reste à son état nominal défini par le pull-up interne et le circuit de la SKR Pico. grblHAL voit l'entrée comme « pas de halt » et retourne `<Idle|...>` au polling `?`.
+- **Sur appui** : le contact se ferme, `P_S` est tiré à GND, l'entrée bascule, grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
 
 `CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est donc active dès le boot, sans configuration logicielle additionnelle.
 
-**Vérifications après câblage** :
+**Si la polarité est inversée au premier essai** (alarme dès le boot sans bouton appuyé), inverser le bit RESET dans le masque `$14` (control invert mask). Procédure : lire avec `$$`, repérer la ligne `$14=...`, ajouter le bit correspondant à RESET selon la doc grblHAL Settings, écrire la nouvelle valeur, redémarrer.
 
-- Au multimètre : un faible courant continu (~5–10 mA) doit circuler dans le circuit du bouton en mode nominal.
-- Sous grblHAL, envoyer `?` (rapport d'état). En mode nominal, aucun indicateur d'E-Stop ne doit apparaître. Sur appui sur le bouton, l'état doit passer à `Alarm:1`.
-- Si l'opposé se produit (alarme au repos, normal à l'appui), votre opto a une polarité inverse de l'hypothèse standard : inversez le bit RESET dans le masque `$14` (control invert mask), puis relire avec `?`.
-
-Câble blindé recommandé sur les longues distances (>1 m), tresse à la masse SKR Pico côté carte uniquement (un seul point de masse pour éviter les boucles).
+> **Limites de cette topologie** : ce câblage simple n'est **pas fail-safe**. Une rupture du câble du bouton ou un débranchement accidentel rendraient l'E-Stop inopérant sans signal d'alerte — le bouton apparaîtrait simplement comme « toujours relâché », et un appui ultérieur n'aurait aucun effet. Acceptable pour une machine de bureau avec câble court (< 1 m) et visible. Pour un usage professionnel ou une machine éloignée de l'opérateur, prévoir un bouton à contact NF (normalement fermé) câblé en série avec la LED de l'opto-coupleur, et inverser la polarité côté firmware via le paramètre `$14` (control invert mask).
 
 ## Premier démarrage — paramètres `$` recommandés
 
