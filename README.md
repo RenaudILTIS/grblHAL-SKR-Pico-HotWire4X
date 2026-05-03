@@ -99,13 +99,13 @@ SKR Pico WD-DET header
 
 À adapter à votre mécanique. Connectez-vous via USB CDC (115200 bauds), puis envoyez ces commandes une par une.
 
-### Reset des paramètres et mode de fonctionnement
+### Reset des paramètres
 
 ```
 $RST=*           ; restaurer tous les paramètres aux valeurs par défaut
-$32=1            ; mode "laser/PWM dynamique" : la chauffe suit la vitesse
-                 ;   de déplacement et coupe à l'arrêt (recommandé hotwire)
 ```
+
+Ne **pas** activer `$32=1` (mode laser) : ce mode module la PWM par la vitesse instantanée de déplacement, ce qui est sans intérêt pour un fil chaud (l'inertie thermique rend la modulation invisible) et risque au contraire de couper la chauffe pendant les ralentissements en fin de trajectoire. Garder `$32=0` (défaut, mode spindle classique) : la chauffe est commandée par `M3 S<valeur>` / `M5`.
 
 ### Drivers TMC2209 (Trinamic)
 
