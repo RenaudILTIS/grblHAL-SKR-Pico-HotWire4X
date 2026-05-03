@@ -16,8 +16,8 @@ Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « Hotwire SERVO »), 
 
 ### Moteurs (drivers TMC2209, UART)
 
-| Axe grblHAL | Connecteur moteur | STEP | DIR | EN |
-|-------------|-------------------|-----:|----:|---:|
+| Axe grblHAL | Connecteur moteur | STEP | DIR  | EN   |
+| ----------- | ----------------- | ----:| ----:| ----:|
 | X           | X-MOT             | GP11 | GP10 | GP12 |
 | Y           | Y-MOT             | GP6  | GP5  | GP7  |
 | Z           | Z-MOT             | GP19 | GP28 | GP2  |
@@ -25,27 +25,27 @@ Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « Hotwire SERVO »), 
 
 ### Fins de course
 
-| Endstop  | Connecteur  | GPIO | Notes                     |
-|----------|-------------|-----:|---------------------------|
-| X        | X-STOP      | GP4  | Entrée 3 broches SIG/+5V/GND |
-| Y        | Y-STOP      | GP3  | idem                      |
-| Z        | Z-STOP      | GP25 | idem                      |
-| A (M3)   | **E0-STOP** | GP16 | endstop du 4ᵉ axe         |
+| Endstop | Connecteur  | GPIO | Notes                        |
+| ------- | ----------- | ----:| ---------------------------- |
+| X       | X-STOP      | GP4  | Entrée 3 broches SIG/+5V/GND |
+| Y       | Y-STOP      | GP3  | idem                         |
+| Z       | Z-STOP      | GP25 | idem                         |
+| A (M3)  | **E0-STOP** | GP16 | endstop du 4ᵉ axe            |
 
 ### Sorties spéciales
 
-| Fonction              | Connecteur | GPIO | Niveau                   |
-|-----------------------|------------|-----:|--------------------------|
-| Hotwire PWM (spindle) | **SERVO**  | GP29 | 3.3 V CMOS               |
-| Spindle enable        | FAN1       | GP17 | 3.3 V                    |
-| Coolant flood         | FAN3       | GP20 | 3.3 V                    |
-| Coolant mist          | HE         | GP23 | 3.3 V                    |
-| GPIO libre            | HB         | GP21 | 3.3 V (sans isolation)   |
+| Fonction              | Connecteur | GPIO | Niveau                 |
+| --------------------- | ---------- | ----:| ---------------------- |
+| Hotwire PWM (spindle) | **SERVO**  | GP29 | 3.3 V CMOS             |
+| Spindle enable        | FAN1       | GP17 | 3.3 V                  |
+| Coolant flood         | FAN3       | GP20 | 3.3 V                  |
+| Coolant mist          | HE         | GP23 | 3.3 V                  |
+| GPIO libre            | HB         | GP21 | 3.3 V (sans isolation) |
 
 ### Entrée sécurité
 
 | Fonction | Connecteur | Broche signal | GPIO | Caractéristique          |
-|----------|------------|---------------|-----:|--------------------------|
+| -------- | ---------- | ------------- | ----:| ------------------------ |
 | E-Stop   | **WD-DET** | `P_S`         | GP22 | Opto-couplé sur la carte |
 
 GND disponible sur tous les connecteurs (broche dédiée ou rail commun).
@@ -70,6 +70,7 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 ```
 
 **Points critiques** :
+
 - **Pas de résistance série** entre GP29 et IN. Les modules opto-isolés intègrent déjà la résistance de limitation côté entrée, dimensionnée pour 3.3–24 V. Ajouter une résistance externe ferait passer la tension d'entrée sous le seuil de l'opto-coupleur.
 - Alimentations **séparées** : la logique du module (VCC) tire son 5 V/12 V de la SKR Pico ou d'une source dédiée ; la charge 48 V passe uniquement par les bornes de puissance V+/V-.
 - **GND commun obligatoire** entre la SKR Pico et la masse logique du module pour que le signal IN ait une référence.
@@ -81,11 +82,11 @@ Bouton-poussoir momentané, normalement ouvert (NO) : convention « appui = déc
 
 Brochage du connecteur WD-DET (3 broches, sérigraphie BTT SKR Pico v1.0, vérifié sur le pinout officiel `BTT SKR Pico V1.0-PIN.pdf` du dépôt BigTreeTech) :
 
-| Broche silkscreen | Rôle                                              |
-|-------------------|---------------------------------------------------|
+| Broche silkscreen | Rôle                                                    |
+| ----------------- | ------------------------------------------------------- |
 | `12/24V`          | Alim active (capteur), non utilisée ici — laisser libre |
-| `GND`             | Masse                                             |
-| `P_S`             | Signal (Probe Signal), routé en interne vers GP22 |
+| `GND`             | Masse                                                   |
+| `P_S`             | Signal (Probe Signal), routé en interne vers GP22       |
 
 Câblage :
 
@@ -171,12 +172,15 @@ $123=200         ; accélération A
 ### Spindle PWM (hotwire)
 
 ```
-$30=1000         ; valeur S (0..1000) à pleine puissance
+$30=1000         ; borne supérieure du réglage possible de la puissance via M3 S...
 $31=0            ; valeur S minimale
 $33=5000         ; fréquence PWM hotwire en Hz (5 kHz = bon compromis)
+$34=0            ; duty cycle quand la chauffe est OFF (impératif : 0 %)
 ```
 
-Test de la chauffe : `M3 S500` (50 %), attendre, mesurer le courant, `M5` pour couper. Vérifier que `M5` éteint réellement le module MOSFET.
+Le `$34=0` est critique en hotwire : il garantit que `M5` coupe effectivement la chauffe. Une valeur non nulle laisserait un courant résiduel dans le fil.
+
+Test de la chauffe : `M3 S500` (S valeur sur l'échelle qui va de la valeur de `$31` à la valeur de `$30`), attendre, mesurer le courant, `M5` pour couper. Vérifier que `M5` éteint réellement le module MOSFET.
 
 ### Sauvegarder
 

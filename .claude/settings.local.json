@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(\"C:/Users/renau/.pico-sdk/cmake/v3.31.5/bin/cmake.exe\" -G Ninja -DCMAKE_MAKE_PROGRAM=C:/Users/renau/.pico-sdk/ninja/v1.12.1/ninja.exe -B build -S .)",
+      "Bash(\"C:/Users/renau/.pico-sdk/cmake/v3.31.5/bin/cmake.exe\" --build build)",
+      "Bash(git checkout *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
