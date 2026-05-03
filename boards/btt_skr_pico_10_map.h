@@ -28,7 +28,7 @@
 #endif
 
 #ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define BOARD_NAME "BTT SKR Pico 1.0 Hotwire"
+#define BOARD_NAME "BTT SKR Pico 1.0 Hotwire SERVO"
 #else
 #define BOARD_NAME "BTT SKR Pico 1.0"
 #endif
@@ -82,11 +82,11 @@
 
 #ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
 #define AUXOUTPUT0_PORT             GPIO_OUTPUT // Spindle PWM
-#define AUXOUTPUT0_PIN              21 // HB PWM
+#define AUXOUTPUT0_PIN              29 // SERVO header (3.3V) -> external MOSFET opto
 #define AUXOUTPUT1_PORT             GPIO_OUTPUT // Spindle direction
 #define AUXOUTPUT1_PIN              18 // FAN2 PWM
 #define AUXOUTPUT2_PORT             GPIO_OUTPUT // Spindle enable
-#define AUXOUTPUT2_PIN              17 // FAN1 PWM  
+#define AUXOUTPUT2_PIN              17 // FAN1 PWM
 #define AUXOUTPUT3_PORT             GPIO_OUTPUT // Coolant flood
 #define AUXOUTPUT3_PIN              20 // FAN3 PWM, Laser PWM
 #define AUXOUTPUT4_PORT             GPIO_OUTPUT // Coolant mist
@@ -133,11 +133,17 @@
 #define AUXINPUT0_PIN               22 // Probe
 #ifndef M3_LIMIT_PIN
 #define AUXINPUT1_PIN               16 // E0 limit
+#ifndef BOARD_BTT_SKR_PICO_10_HOTWIRE
 #define AUXOUTPUT0_PWM_PIN          29 // Servo
+#endif
 #else
 #if CONTROL_ENABLE & CONTROL_HALT
-#define AUXINPUT1_PIN               29 // Reset/E-Stop (Servo - NOTE: this pin has no input filtering/protection)
+#ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
+#define AUXINPUT1_PIN               21 // HB freed by SERVO remap of AUXOUTPUT0
 #else
+#define AUXINPUT1_PIN               29 // Reset/E-Stop (Servo - NOTE: this pin has no input filtering/protection)
+#endif
+#elif !defined(BOARD_BTT_SKR_PICO_10_HOTWIRE)
 #define AUXOUTPUT0_PWM_PIN          29 // Servo
 #endif
 #endif

@@ -29,12 +29,14 @@
 //#define BOARD_PICOBOB_DLX_G540
 //#define BOARD_PICOHAL
 //#define BOARD_BTT_SKR_PICO_10
-//#define BOARD_BTT_SKR_PICO_10_HOTWIRE // Swaps spindle PWM and coolant outputs to utilize the bed heater (HB) output to control the hotwire. 
+#define BOARD_BTT_SKR_PICO_10_HOTWIRE // Swaps spindle PWM and coolant outputs to utilize the bed heater (HB) output to control the hotwire.
 //#define BOARD_CNC_BOOSTERPACK
 //#define BOARD_CITOH_CX6000    // C.ITOH CX-6000 HPGL plotter
 //#define BOARD_GENERIC_4AXIS
 //#define BOARD_GENERIC_8AXIS
 //#define BOARD_MY_MACHINE      // Add my_machine_map.h before enabling this!
+
+#define N_AXIS 4
 
 // Configuration
 // Uncomment to enable.
