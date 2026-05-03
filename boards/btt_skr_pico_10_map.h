@@ -92,6 +92,14 @@
 #define Z_LIMIT_PIN                 25
 
 #ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
+// Hotwire output wiring (GPIO 29, SERVO header):
+// Connect this pin directly to the IN terminal of an opto-isolated MOSFET
+// module - common 3.3-24V trigger modules already integrate the input
+// limiting resistor sized for that voltage range. DO NOT add a series
+// resistor: the RP2040 drives 3.3V CMOS levels, and an extra series
+// resistor would drop the voltage below the opto-coupler's forward
+// threshold and the module would fail to switch. Tie the module's GND to
+// the SKR Pico GND. Power the hotwire load (48V) on the module's load side.
 #define AUXOUTPUT0_PORT             GPIO_OUTPUT // Spindle PWM
 #define AUXOUTPUT0_PIN              29 // SERVO header (3.3V) -> external MOSFET opto
 #define AUXOUTPUT1_PORT             GPIO_OUTPUT // Spindle direction
