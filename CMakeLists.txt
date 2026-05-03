@@ -119,6 +119,11 @@ target_compile_definitions(grblHAL PUBLIC RP_MCU=2350)
 endif()
 target_compile_definitions(grblHAL PUBLIC RP2040)
 target_compile_definitions(grblHAL PUBLIC NEW_FATFS)
+# grbl/*.c sources include grbl/config.h directly (not my_machine.h), so the
+# #ifndef N_AXIS guard there would default them to 3 - producing [AXS:3:XYZ]
+# while driver code sees N_AXIS=4. Mirror my_machine.h's value here so every
+# translation unit agrees. Keep this in sync with my_machine.h:N_AXIS.
+target_compile_definitions(grblHAL PUBLIC N_AXIS=4)
 #target_compile_definitions(grblHAL PUBLIC LITTLEFS_ENABLE=1)
 
 if(ADD_WIFI)

@@ -36,6 +36,9 @@
 //#define BOARD_GENERIC_8AXIS
 //#define BOARD_MY_MACHINE      // Add my_machine_map.h before enabling this!
 
+// N_AXIS is also forced via target_compile_definitions in CMakeLists.txt so
+// that grbl/*.c (which include config.h directly, not my_machine.h) see the
+// same value. Keep both in sync.
 #define N_AXIS 4
 
 // Configuration
