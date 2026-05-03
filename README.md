@@ -77,23 +77,32 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 
 ## Câblage du bouton E-Stop
 
-Topologie **fail-safe** : contact normalement fermé (NF). Libérer le bouton ou couper le câble doit déclencher le halt.
+Topologie **fail-safe** : le bouton (contact normalement fermé, NF) est mis en série avec la **LED de l'opto-coupleur** de la SKR Pico. La LED est alimentée au repos. Une rupture de câble doit éteindre la LED, exactement comme un appui sur le bouton.
+
+> **Important** : le connecteur WD-DET n'expose **pas** GP22 directement. GP22 est l'entrée du MCU côté **sortie** du phototransistor de l'opto, totalement interne à la carte. Côté connecteur, vous accédez à la LED de l'opto et à des rails d'alimentation. Le brochage exact des trois broches accessibles (anode opto via résistance de limitation interne, GND, +5V) est à confirmer sur le schéma officiel BTT SKR Pico v1.0 — les sérigraphies varient selon les lots.
+
+Câblage type, en notant les broches du connecteur par leur fonction :
 
 ```
-SKR Pico WD-DET header
-+-------------+
-| GP22 -------+----+
-|             |    |  contact NF (normally closed)
-| GND --------+----+--- bouton coup-de-poing E-Stop industriel
-| +5V (libre) |
-+-------------+
++5V (broche WD-DET) ─── bouton NF ─── broche "anode opto" du WD-DET
+GND (broche WD-DET) ─── (commun, masse SKR Pico)
 ```
 
-- En fonctionnement normal : le bouton est armé, le contact est fermé, GP22 est tiré à la masse à travers l'opto-coupleur.
-- Sur appui (ou rupture de câble) : le contact s'ouvre, l'entrée bascule, grblHAL déclenche `Alarm:1` (Estop) et coupe la chauffe.
-- Câble blindé recommandé sur les longues distances (>1 m), tresse à la masse SKR Pico côté carte uniquement.
+**Au repos** (bouton armé, contact fermé) : le 5 V drive un courant à travers la LED de l'opto via la résistance de limitation interne (~5–10 mA). Le phototransistor conduit, ce qui tire GP22 à la masse côté MCU. grblHAL lit `signals.e_stop = 0` → pas d'alarme.
+
+**Sur appui sur le bouton OU rupture de câble** : la LED s'éteint, le phototransistor bloque, GP22 remonte à `1` via le pull-up interne. grblHAL lit `signals.e_stop = 1` → `Alarm:1` (E-Stop) et coupe la chauffe immédiatement.
+
+C'est cette polarité « LED ON au repos, OFF en alarme » qui rend le système intrinsèquement sûr face à une rupture de câble — un câble simplement débranché doit déclencher l'alarme, pas la masquer.
 
 `CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est donc active dès le boot, sans configuration logicielle additionnelle.
+
+**Vérifications après câblage** :
+
+- Au multimètre : un faible courant continu (~5–10 mA) doit circuler dans le circuit du bouton en mode nominal.
+- Sous grblHAL, envoyer `?` (rapport d'état). En mode nominal, aucun indicateur d'E-Stop ne doit apparaître. Sur appui sur le bouton, l'état doit passer à `Alarm:1`.
+- Si l'opposé se produit (alarme au repos, normal à l'appui), votre opto a une polarité inverse de l'hypothèse standard : inversez le bit RESET dans le masque `$14` (control invert mask), puis relire avec `?`.
+
+Câble blindé recommandé sur les longues distances (>1 m), tresse à la masse SKR Pico côté carte uniquement (un seul point de masse pour éviter les boucles).
 
 ## Premier démarrage — paramètres `$` recommandés
 
@@ -125,11 +134,20 @@ Garder `$140-$143` ≤ ~0.7 × le courant nominal du moteur pour limiter l'écha
 
 ### Cinématique
 
+Formules à utiliser selon votre transmission :
+
+- **Vis (leadscrew)** : `steps/mm = (motor_steps × microsteps) / pitch_mm`
+  - Exemple TR8x8 (pas 8 mm/tour), moteur 200 pas/tour, 32 microsteps : `200 × 32 / 8 = 800 steps/mm`
+- **Courroie (belt)** : `steps/mm = (motor_steps × microsteps) / (belt_pitch_mm × pulley_teeth)`
+  - Exemple GT2 (pas 2 mm) avec poulie 20 dents, moteur 200 pas/tour, 32 microsteps : `200 × 32 / (2 × 20) = 6400 / 40 = 160 steps/mm`
+
+L'exemple ci-dessous correspond à une configuration **courroie GT2 + poulie 20 dents**, courante en hotwire (charge légère, courroie économique et silencieuse). Recalculer pour vis, ou pour un autre nombre de dents de poulie.
+
 ```
-$100=80          ; steps/mm X - calculer : (200 * microsteps) / pas_de_vis_mm
-$101=80          ; steps/mm Y
-$102=80          ; steps/mm Z
-$103=80          ; steps/mm A
+$100=160         ; steps/mm X — courroie GT2 (2mm) × 20T × 200 pas × 32 microsteps
+$101=160         ; steps/mm Y
+$102=160         ; steps/mm Z
+$103=160         ; steps/mm A
 
 $110=3000        ; vitesse max X en mm/min
 $111=3000        ; vitesse max Y
