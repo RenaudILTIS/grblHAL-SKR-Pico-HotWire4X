@@ -27,23 +27,24 @@
 #error "Wireless networking is not supported!"
 #endif
 
-#ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define BOARD_NAME "BTT SKR Pico 1.0 Hotwire SERVO"
-// Hotwire safety policy: hardware E-Stop input is mandatory.
-// CONTROL_HALT is already enabled by the driver default (driver.h:160);
-// this block routes the E-Stop input to GPIO 22 (WD-DET header), which is
-// opto-coupled at the board level - galvanic isolation between the field-
-// wired E-Stop loop and the RP2040, noise immunity on long cable runs, and
-// surge protection. The alternative pins (GPIO 21 ex-HB, GPIO 29 SERVO)
-// have no isolation and expose the MCU directly to industrial wiring noise
-// and transients. Probe is disabled (foam cutting does not probe); this
-// frees GPIO 22 from the default AUXINPUT0 probe assignment for E-Stop.
+#define BOARD_NAME "BTT SKR Pico 1.0 SERVO"
+#define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
+
+// Foam-cutter / hotwire SERVO variant of the BTT SKR Pico 1.0:
+//   * Spindle PWM is routed to the SERVO header (GPIO 29) so it can drive an
+//     external opto-isolated MOSFET module that switches the hotwire load.
+//     See AUXOUTPUT0_PIN below.
+//   * Hardware E-Stop is mandatory. CONTROL_HALT is enabled by the driver
+//     default (driver.h:160); the E-Stop input is routed to GPIO 22
+//     (WD-DET header), which is opto-coupled at the board level - galvanic
+//     isolation between the field-wired E-Stop loop and the RP2040, noise
+//     immunity on long cable runs, and surge protection. The alternative
+//     pins (GPIO 21 ex-HB, GPIO 29 SERVO) have no isolation and expose the
+//     MCU directly to industrial wiring noise and transients.
+//   * Probe is disabled (foam cutting does not probe); this frees GPIO 22
+//     from the default AUXINPUT0 probe assignment for E-Stop.
 #undef  PROBE_ENABLE
 #define PROBE_ENABLE                0
-#else
-#define BOARD_NAME "BTT SKR Pico 1.0"
-#endif
-#define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
 
 #define SERIAL1_PORT 1
 
@@ -91,7 +92,6 @@
 #define Y_LIMIT_PIN                 3
 #define Z_LIMIT_PIN                 25
 
-#ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
 // Hotwire output wiring (GPIO 29, SERVO header):
 // Connect this pin directly to the IN terminal of an opto-isolated MOSFET
 // module - common 3.3-24V trigger modules already integrate the input
@@ -110,18 +110,6 @@
 #define AUXOUTPUT3_PIN              20 // FAN3 PWM, Laser PWM
 #define AUXOUTPUT4_PORT             GPIO_OUTPUT // Coolant mist
 #define AUXOUTPUT4_PIN              23 // HE PWM
-#else
-#define AUXOUTPUT0_PORT             GPIO_OUTPUT // Spindle PWM
-#define AUXOUTPUT0_PIN              20 // FAN3 PWM, Laser PWM
-#define AUXOUTPUT1_PORT             GPIO_OUTPUT // Spindle direction
-#define AUXOUTPUT1_PIN              18 // FAN2 PWM
-#define AUXOUTPUT2_PORT             GPIO_OUTPUT // Spindle enable
-#define AUXOUTPUT2_PIN              17 // FAN1 PWM  
-#define AUXOUTPUT3_PORT             GPIO_OUTPUT // Coolant flood
-#define AUXOUTPUT3_PIN              21 // HB PWM
-#define AUXOUTPUT4_PORT             GPIO_OUTPUT // Coolant mist
-#define AUXOUTPUT4_PIN              23 // HE PWM
-#endif
 
 // Define driver spindle pins
 
@@ -149,23 +137,14 @@
 #define COOLANT_MIST_PIN            AUXOUTPUT4_PIN
 #endif
 
-#ifndef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define AUXINPUT0_PIN               22 // Probe
-#endif
+// E-Stop input on GPIO 22 (WD-DET, opto-coupled at board level).
+// Probe is disabled above to free this pin. GPIO 29 (SERVO) is taken by
+// AUXOUTPUT0 (spindle PWM) so it cannot serve as PWM/E-Stop here.
 #ifndef M3_LIMIT_PIN
 #define AUXINPUT1_PIN               16 // E0 limit
-#ifndef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define AUXOUTPUT0_PWM_PIN          29 // Servo
-#endif
 #else
 #if CONTROL_ENABLE & CONTROL_HALT
-#ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define AUXINPUT1_PIN               22 // WD-DET (opto-coupled) - E-Stop, see safety policy at top of HOTWIRE block
-#else
-#define AUXINPUT1_PIN               29 // Reset/E-Stop (Servo - NOTE: this pin has no input filtering/protection)
-#endif
-#elif !defined(BOARD_BTT_SKR_PICO_10_HOTWIRE)
-#define AUXOUTPUT0_PWM_PIN          29 // Servo
+#define AUXINPUT1_PIN               22 // WD-DET (opto-coupled) - E-Stop, see safety policy in board header
 #endif
 #endif
 

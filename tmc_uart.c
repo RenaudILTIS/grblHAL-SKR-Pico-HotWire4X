@@ -80,7 +80,7 @@ void tmc_uart_write (trinamic_motor_t driver, TMC_uart_write_datagram_t *dgr)
     while(tmc_uart.get_tx_buffer_count());
 }
 
-#if defined(BOARD_BTT_SKR_PICO_10) || defined(BOARD_BTT_SKR_PICO_10_HOTWIRE)
+#if defined(BOARD_BTT_SKR_PICO_10)
 
 void driver_preinit (motor_map_t motor, trinamic_driver_config_t *config)
 {
@@ -123,5 +123,5 @@ void tmc_uart_init (void)
     tmc_uart.set_enqueue_rt_handler(stream_buffer_all);
 }
 
-#endif // BOARD_BTT_SKR_PICO_10 / _HOTWIRE
+#endif // BOARD_BTT_SKR_PICO_10
 #endif // TRINAMIC_UART_ENABLE

@@ -28,8 +28,8 @@
 //#define BOARD_PICOBOB_DLX
 //#define BOARD_PICOBOB_DLX_G540
 //#define BOARD_PICOHAL
-//#define BOARD_BTT_SKR_PICO_10
-#define BOARD_BTT_SKR_PICO_10_HOTWIRE // Swaps spindle PWM and coolant outputs to utilize the bed heater (HB) output to control the hotwire.
+#define BOARD_BTT_SKR_PICO_10 // Foam-cutter / hotwire SERVO variant: spindle PWM is routed to the SERVO header (GP29) and probe is disabled to free GP22 (WD-DET) for E-Stop. See boards/btt_skr_pico_10_map.h.
+//#define BOARD_BTT_SKR_PICO_10_HOTWIRE // Deprecated - the standalone HOTWIRE variant suffered from incomplete coverage in upstream code (e.g. tmc_uart.c address remap, several #ifdef sites). The customisations are now baked into BOARD_BTT_SKR_PICO_10 above.
 //#define BOARD_CNC_BOOSTERPACK
 //#define BOARD_CITOH_CX6000    // C.ITOH CX-6000 HPGL plotter
 //#define BOARD_GENERIC_4AXIS
