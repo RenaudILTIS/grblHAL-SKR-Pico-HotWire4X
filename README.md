@@ -1,16 +1,20 @@
 # grblHAL Hotwire SERVO — BTT SKR Pico v1.0
 
-Variante `BOARD_BTT_SKR_PICO_10_HOTWIRE` de grblHAL/RP2040 pour la découpe par fil chaud (foam cutter), 4 axes, drivers TMC2209 en UART, sortie de chauffe sur le connecteur SERVO via module MOSFET externe.
+Variante SERVO du board map `BOARD_BTT_SKR_PICO_10` de grblHAL/RP2040 pour la découpe par fil chaud (foam cutter), 4 axes, drivers TMC2209 en UART, sortie de chauffe sur le connecteur SERVO via module MOSFET externe.
+
+> **Alimentation** : pour la mise au point complète (test des drivers TMC2209 via UART, `M122`, persistance des microsteps, etc.) il est **impératif** d'alimenter la carte par le bornier 12–24 V (`VMOT`/`GND`, à côté des fusibles), **pas par le jumper USB seul**. Sans VM, les TMC2209 ne sont pas alimentés et ne répondent pas en UART : `[NEWOPT:...]` ne contient pas `TMC=15`, et toute écriture `$15x=...` est silencieusement ignorée (la valeur lue par `$$` reste à 16).
 
 ## Vérification du flash
 
 Après flash de `build/grblHAL.uf2` (mode BOOTSEL puis copie sur le lecteur RPI-RP2), la commande grblHAL `$I` doit renvoyer une ligne contenant :
 
 ```
-[BOARD:BTT SKR Pico 1.0 Hotwire SERVO]
+[BOARD:BTT SKR Pico 1.0 SERVO]
 ```
 
-Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « Hotwire SERVO »), c'est le firmware standard — re-flasher.
+Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « SERVO »), c'est le firmware standard — re-flasher.
+
+Vérifier également que `[NEWOPT:...]` contient `TMC=15` : c'est le mask des 4 drivers TMC2209 ayant répondu en UART. Si `TMC=15` est absent, vérifier l'alimentation 12–24 V du bornier VMOT (cf. encadré en tête de README).
 
 ## Pinout des connecteurs utiles (sérigraphie SKR Pico v1.0)
 
@@ -78,7 +82,7 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 
 ## Câblage du bouton E-Stop
 
-Bouton-poussoir momentané, normalement ouvert (NO) : convention « appui = déclenche l'alarme ». Câblage minimaliste, deux fils entre le bouton et le connecteur WD-DET de la SKR Pico.
+L'entrée E-Stop est sur GP22, broche `P_S` du connecteur WD-DET (opto-couplée au niveau de la carte). **Câblage fail-safe obligatoire** : un bouton coup-de-poing à contact **NF (normalement fermé)** entre `P_S` et `GND`.
 
 Brochage du connecteur WD-DET (3 broches, sérigraphie BTT SKR Pico v1.0, vérifié sur le pinout officiel `BTT SKR Pico V1.0-PIN.pdf` du dépôt BigTreeTech) :
 
@@ -92,26 +96,40 @@ Câblage :
 
 ```
 SKR Pico WD-DET           Bouton coup-de-poing
-+-----------+             (contact momentané NO)
++-----------+             (contact NF — normalement fermé)
 | 12/24V    |  (libre)
 | GND   ----+-------------+
 | P_S   ----+--------+    |
 +-----------+        |    |
-                    [bouton NO]
-                  fermé sur appui,
-                  ouvert au repos
+                    [bouton NF]
+                  fermé au repos,
+                  ouvert sur appui
 ```
 
 Comportement attendu :
 
-- **Au repos** (bouton relâché, contact ouvert) : `P_S` reste à son état nominal défini par le pull-up interne et le circuit de la SKR Pico. grblHAL voit l'entrée comme « pas de halt » et retourne `<Idle|...>` au polling `?`.
-- **Sur appui** : le contact se ferme, `P_S` est tiré à GND, l'entrée bascule, grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
+- **Au repos** (bouton relâché, contact **fermé**) : `P_S` est tiré à GND par le bouton. grblHAL voit l'entrée comme « pas de halt » et passe en `<Idle|...>` après `$X`.
+- **Sur appui** (contact ouvert) : la ligne flotte haute (pull-up interne du Pico). grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
+- **Câble coupé ou débranché** : ligne flotte haute → comportement identique à un appui sur le bouton → halt automatique. C'est précisément ce qu'apporte le fail-safe.
 
 `CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est donc active dès le boot, sans configuration logicielle additionnelle.
 
-**Si la polarité est inversée au premier essai** (alarme dès le boot sans bouton appuyé), inverser le bit RESET dans le masque `$14` (control invert mask). Procédure : lire avec `$$`, repérer la ligne `$14=...`, ajouter le bit correspondant à RESET selon la doc grblHAL Settings, écrire la nouvelle valeur, redémarrer.
+### Test de validation (avant câblage du bouton définitif)
 
-> **Limites de cette topologie** : ce câblage simple n'est **pas fail-safe**. Une rupture du câble du bouton ou un débranchement accidentel rendraient l'E-Stop inopérant sans signal d'alerte — le bouton apparaîtrait simplement comme « toujours relâché », et un appui ultérieur n'aurait aucun effet. Acceptable pour une machine de bureau avec câble court (< 1 m) et visible. Pour un usage professionnel ou une machine éloignée de l'opérateur, prévoir un bouton à contact NF (normalement fermé) câblé en série avec la LED de l'opto-coupleur, et inverser la polarité côté firmware via le paramètre `$14` (control invert mask).
+Court-circuiter `P_S` à `GND` avec un fil jumper, faire un soft reset (`Ctrl+X`), puis :
+
+```
+$X       → doit retourner [MSG:Caution: Unlocked] (et non error:79)
+M122     → rapport TMC complet
+```
+
+Retirer le pont → l'alarme E-Stop doit revenir au prochain reset. Si c'est conforme, câbler le bouton NF définitif et tu peux ignorer toute configuration de polarité.
+
+### Bouton NO ou polarité inversée
+
+Si tu utilises malgré tout un bouton NO (normalement ouvert), ou si la chaîne est inversée pour une raison quelconque, la polarité du signal E-Stop peut être inversée via `$14=64` (bit 6 = E-Stop). Cette option sera exposée dans l'interface logicielle (case « NO/NC ») — il n'est en principe pas nécessaire de la régler manuellement en CLI.
+
+> **Avertissement** : un câblage NO n'est **pas fail-safe**. Un câble coupé ou débranché ne sera pas détecté (la ligne reste à son état "OK"). À éviter en production, surtout sur une machine industrielle ou éloignée de l'opérateur.
 
 ## Premier démarrage — paramètres `$` recommandés
 
@@ -188,10 +206,10 @@ Toutes les modifications `$xxx=` sont persistées en flash automatiquement. Vér
 
 ## Réactiver le probe plus tard
 
-Dans la variante SERVO, `PROBE_ENABLE 0` est forcé dans `boards/btt_skr_pico_10_map.h` (bloc HOTWIRE) car GP22 est utilisé comme E-Stop. Pour rétablir un probe :
+Dans cette variante, `PROBE_ENABLE 0` est forcé en haut de `boards/btt_skr_pico_10_map.h` car GP22 est utilisé comme E-Stop. Pour rétablir un probe :
 
-1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB, ou un GPIO du connecteur SERVO si l'E-Stop n'est pas câblé). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité.
-2. **Modifier le board map** : retirer la paire `#undef PROBE_ENABLE` / `#define PROBE_ENABLE 0` du bloc HOTWIRE, et ajouter `#define AUXINPUT0_PIN <gpio_choisi>` au-dessus du bloc des AUXINPUT.
+1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité. (GP29 SERVO n'est plus disponible : pris par la sortie hotwire PWM.)
+2. **Modifier le board map** : retirer la paire `#undef PROBE_ENABLE` / `#define PROBE_ENABLE 0` (en haut du fichier), et ajouter `#define AUXINPUT0_PIN <gpio_choisi>` au-dessus du bloc des AUXINPUT.
 3. **Recompiler** : voir section ci-dessous.
 
 Renoncer à l'E-Stop matériel pour récupérer GP22 comme probe est déconseillé en production.
