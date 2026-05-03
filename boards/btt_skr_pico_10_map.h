@@ -29,6 +29,17 @@
 
 #ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
 #define BOARD_NAME "BTT SKR Pico 1.0 Hotwire SERVO"
+// Hotwire safety policy: hardware E-Stop input is mandatory.
+// CONTROL_HALT is already enabled by the driver default (driver.h:160);
+// this block routes the E-Stop input to GPIO 22 (WD-DET header), which is
+// opto-coupled at the board level - galvanic isolation between the field-
+// wired E-Stop loop and the RP2040, noise immunity on long cable runs, and
+// surge protection. The alternative pins (GPIO 21 ex-HB, GPIO 29 SERVO)
+// have no isolation and expose the MCU directly to industrial wiring noise
+// and transients. Probe is disabled (foam cutting does not probe); this
+// frees GPIO 22 from the default AUXINPUT0 probe assignment for E-Stop.
+#undef  PROBE_ENABLE
+#define PROBE_ENABLE                0
 #else
 #define BOARD_NAME "BTT SKR Pico 1.0"
 #endif
@@ -130,7 +141,9 @@
 #define COOLANT_MIST_PIN            AUXOUTPUT4_PIN
 #endif
 
+#ifndef BOARD_BTT_SKR_PICO_10_HOTWIRE
 #define AUXINPUT0_PIN               22 // Probe
+#endif
 #ifndef M3_LIMIT_PIN
 #define AUXINPUT1_PIN               16 // E0 limit
 #ifndef BOARD_BTT_SKR_PICO_10_HOTWIRE
@@ -139,7 +152,7 @@
 #else
 #if CONTROL_ENABLE & CONTROL_HALT
 #ifdef BOARD_BTT_SKR_PICO_10_HOTWIRE
-#define AUXINPUT1_PIN               21 // HB freed by SERVO remap of AUXOUTPUT0
+#define AUXINPUT1_PIN               22 // WD-DET (opto-coupled) - E-Stop, see safety policy at top of HOTWIRE block
 #else
 #define AUXINPUT1_PIN               29 // Reset/E-Stop (Servo - NOTE: this pin has no input filtering/protection)
 #endif
