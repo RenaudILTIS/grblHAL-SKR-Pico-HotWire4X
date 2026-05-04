@@ -27,7 +27,7 @@
 #error "Wireless networking is not supported!"
 #endif
 
-#define BOARD_NAME "BTT SKR Pico 1.0 SERVO"
+#define BOARD_NAME "SKR Pico v1.0 HotWire4X - R.ILTIS"
 #define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
 
 // Foam-cutter / hotwire SERVO variant of the BTT SKR Pico 1.0:
@@ -148,11 +148,18 @@
 #endif
 #endif
 
-// Define user-control controls (cycle start, reset, feed hold) input pins.
+// Cycle Start (Resume) on GP1 / Feed Hold on GP0 - TFT serial header (UART0,
+// unused since USB is primary). GP1 chosen for Cycle Start because it is the
+// pin adjacent to GND on the 5-pin TFT connector. Direct 3.3V GPIOs with no
+// isolation - NOT suitable for E-Stop, which stays on opto-coupled GP22.
 #if CONTROL_ENABLE & CONTROL_HALT
+#define AUXINPUT2_PIN               1
+#define AUXINPUT3_PIN               0
 #undef CONTROL_ENABLE
-#define CONTROL_ENABLE              CONTROL_HALT
+#define CONTROL_ENABLE              (CONTROL_HALT|CONTROL_CYCLE_START|CONTROL_FEED_HOLD)
 #define RESET_PIN                   AUXINPUT1_PIN
+#define CYCLE_START_PIN             AUXINPUT2_PIN
+#define FEED_HOLD_PIN               AUXINPUT3_PIN
 #endif
 
 #if PROBE_ENABLE

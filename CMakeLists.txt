@@ -124,6 +124,38 @@ target_compile_definitions(grblHAL PUBLIC NEW_FATFS)
 # while driver code sees N_AXIS=4. Mirror my_machine.h's value here so every
 # translation unit agrees. Keep this in sync with my_machine.h:N_AXIS.
 target_compile_definitions(grblHAL PUBLIC N_AXIS=4)
+
+# HotWire4X per-machine defaults (R. ILTIS).
+# Same root cause as N_AXIS: grbl/settings.c reads DEFAULT_* via grbl/config.h,
+# which never sees my_machine.h. Without these -D overrides the user gets the
+# upstream defaults (250 steps/mm, 500 mm/min, 10 mm/s^2, 200mm travel, 0
+# invert masks). TMC values (currents, microsteps) would work via my_machine.h
+# alone since motors/trinamic.* sees it, but mirrored here for consistency.
+target_compile_definitions(grblHAL PUBLIC
+    DEFAULT_X_STEPS_PER_MM=160.0f
+    DEFAULT_Y_STEPS_PER_MM=160.0f
+    DEFAULT_Z_STEPS_PER_MM=160.0f
+    DEFAULT_A_STEPS_PER_MM=160.0f
+    DEFAULT_X_MAX_RATE=2400.0f
+    DEFAULT_Y_MAX_RATE=2400.0f
+    DEFAULT_Z_MAX_RATE=2400.0f
+    DEFAULT_A_MAX_RATE=2400.0f
+    DEFAULT_X_ACCELERATION=2000.0f
+    DEFAULT_Y_ACCELERATION=2000.0f
+    DEFAULT_Z_ACCELERATION=2000.0f
+    DEFAULT_A_ACCELERATION=2000.0f
+    DEFAULT_X_MAX_TRAVEL=850.0f
+    DEFAULT_Y_MAX_TRAVEL=450.0f
+    DEFAULT_Z_MAX_TRAVEL=850.0f
+    DEFAULT_A_MAX_TRAVEL=450.0f
+    DEFAULT_X_CURRENT=800.0f
+    DEFAULT_Y_CURRENT=800.0f
+    DEFAULT_Z_CURRENT=800.0f
+    DEFAULT_A_CURRENT=800.0f
+    DEFAULT_LIMIT_SIGNALS_INVERT_MASK=15
+    DEFAULT_CONTROL_SIGNALS_INVERT_MASK=70
+    TRINAMIC_DEFAULT_MICROSTEPS=32
+)
 #target_compile_definitions(grblHAL PUBLIC LITTLEFS_ENABLE=1)
 
 if(ADD_WIFI)

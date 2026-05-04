@@ -169,4 +169,11 @@
 #endif
 #endif // WIFI_ENABLE
 
+// HotWire4X per-machine DEFAULT_* values (steps/mm, rates, accel, travel,
+// currents, microsteps, invert masks) live in CMakeLists.txt as -D compile
+// definitions, NOT here. Reason: grbl/settings.c reads DEFAULT_* via
+// grbl/config.h which never includes my_machine.h, so values defined here
+// only reach driver.c / motors/trinamic.* and silently fail for $100-$130.
+// See the "HotWire4X per-machine defaults" block in CMakeLists.txt.
+
 /**/

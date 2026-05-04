@@ -5,7 +5,13 @@
       "Bash(\"C:/Users/renau/.pico-sdk/cmake/v3.31.5/bin/cmake.exe\" --build build)",
       "Bash(git checkout *)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(export PICO_SDK_PATH=\"C:/Users/renau/.pico-sdk/sdk/2.1.1\")",
+      "Bash(export PATH=\"/c/Users/renau/.pico-sdk/cmake/v3.31.5/bin:/c/Users/renau/.pico-sdk/ninja/v1.12.1:/c/Users/renau/.pico-sdk/toolchain/14_2_Rel1/bin:$PATH\")",
+      "Bash(ninja)",
+      "Bash(git -C C:/Github/grblHAL_HotWire_Servo status)",
+      "Bash(git *)",
+      "Bash(ninja -C /c/Github/grblHAL_HotWire_Servo/build)"
     ]
   }
 }
