@@ -100,6 +100,7 @@ Toutes les valeurs ci-dessous sont compilées dans le firmware et appliquées su
 | Paramètre | Valeur | Signification |
 |---|---:|---|
 | `$0` | 5 µs | Largeur d'impulsion step |
+| `$1` | 25 | Délai en ms avant désactivation des moteurs après le dernier pas (voir note ci-dessous) |
 | `$11` | 0.010 mm | Junction deviation (très serrée pour fil chaud) |
 | `$100-$103` | 160 | Steps/mm (courroie GT2 × poulie 20 dents × moteur 200 pas × 32 µsteps) |
 | `$110-$113` | 2400 mm/min | Vitesse max par axe |
@@ -130,6 +131,14 @@ Bits de `$14` : `64` (E-Stop) + `4` (Cycle Start) + `2` (Feed Hold) = `70`.
 ### Homing
 
 `$22=0` (homing désactivé). Découpe au fil chaud n'a typiquement pas de cycle de référence automatique ; le zéro machine est posé manuellement avec `G92 X0 Y0 Z0 A0`.
+
+### Tenue des moteurs au repos (`$1`)
+
+Paramètre modifiable au runtime, exprimé en millisecondes :
+
+- `$1=0` : désactivation immédiate des drivers après le dernier pas
+- `$1=1` à `$1=254` : désactivation après N ms
+- `$1=255` : drivers maintenus actifs en permanence (pas de désactivation)
 
 ---
 
