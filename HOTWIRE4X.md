@@ -27,23 +27,25 @@ Le rapport `[NEWOPT:...]` doit également contenir `TMC=15` (4 drivers TMC2209 r
 | **4 axes** | X, Y, Z, A (4ᵉ axe sur le port E0) — kinematique cartésienne, les deux tours pilotent indépendamment |
 | **Drivers TMC2209 UART** | Courant + microsteps configurables au runtime via `$140-$143` et `$150-$153`, monitoring `M122` |
 | **Sortie chauffe PWM** | Sur le header SERVO (GP29), pour module MOSFET externe opto-isolé |
-| **Arrêt d'urgence** | Sur le header WD-DET (GP22), opto-couplé sur la carte |
+| **Arrêt d'urgence** | Sur le header PROBE (GP22), bouton-poussoir NO direct vers GND |
 | **Bouton Cycle Start (Resume)** | Sur le header TFT, pin GP1 |
 | **Bouton Feed Hold (pause)** | Sur le header TFT, pin GP0 |
 | **Polarité par défaut NO** | Tous les boutons et fins de course sont configurés en normalement-ouvert (`$5=15`, `$14=70`) — câblage direct vers GND, plug-and-play avec des boutons-poussoir grand public |
-| **Probe désactivé** | GP22 est dédié à l'E-Stop ; le probe peut être réactivé sur GP21 (header HB) après modification (voir README) |
+| **Probe désactivé** | GP22 est dédié à l'E-Stop ; le probe peut être réactivé sur un autre GPIO libre après modification (voir README) |
 
 ---
 
 ## Préparation matérielle obligatoire
 
-### Jumper P_S/IO22 sur la carte
+### Strap P_S/IO22/PROBE sur la carte
 
-La SKR Pico v1.0 possède un **jumper physique** (ou strap soudé) qui route le signal GP22 vers l'un des deux connecteurs : `WD-DET` (utilisé ici pour l'E-Stop) ou `PROBE`. Il est étiqueté `P_S/IO22` à proximité de ces connecteurs.
+La SKR Pico v1.0 possède un **strap 3 broches** étiqueté `P_S/IO22/PROBE` qui route GP22 soit vers l'entrée opto-couplée du connecteur `WD-DET` (broche `P_S`), soit en direct (sans isolation) vers le connecteur `PROBE`.
 
-**Position requise pour ce firmware :** placer le jumper côté `P_S` du connecteur `WD-DET`. Sans ce jumper, l'entrée E-Stop est flottante et la machine restera bloquée en alarme `error:79` au démarrage.
+**Position requise pour ce firmware :** strap côté **PROBE**, c'est-à-dire reliant la pin centrale `IO22` à la pin `PROBE`. GP22 est alors disponible en GPIO brut sur le connecteur `PROBE`, où l'on câble le bouton E-Stop entre `PROBE` et `GND` (cf. tableau ci-dessous).
 
-C'est une opération unique faite à la fabrication ; aucune raison de le manipuler ensuite.
+L'entrée opto-couplée `P_S` du connecteur `WD-DET` n'est **pas utilisable pour un bouton-poussoir passif** : elle attend un signal alimenté (typiquement 12-24 V) issu d'un capteur, et un simple poussoir vers GND ne fait jamais conduire l'opto-coupleur. Le routage côté `PROBE` contourne ce circuit d'entrée et ramène GP22 sur une broche directement utilisable, comme les entrées de fins de course.
+
+C'est une opération unique faite à la fabrication ; aucune raison de manipuler ce strap ensuite.
 
 ### Alimentation VMOT — obligatoire pour configurer les drivers
 
@@ -74,7 +76,7 @@ Pour toute opération de configuration des drivers (changement de courant, de mi
 |---|---|---|---|
 | **Cycle Start** (Resume) | TFT (5 broches 2.54mm) | RXD0 | GP1 |
 | **Feed Hold** (pause) | TFT (5 broches 2.54mm) | TXD0 | GP0 |
-| **E-Stop** | WD-DET | P_S | GP22 (opto-couplé) |
+| **E-Stop** | PROBE | PROBE | GP22 (GPIO brut, pull-up interne) |
 
 Brochage du header TFT : `[+5V] [+5V] [GND] [RXD0=GP1] [TXD0=GP0]`. GP1 (Cycle Start) est en pin 4, adjacent à la GND centrale (pin 3), ce qui permet de câbler un bouton Cycle Start avec un simple fil 2 broches sur les pins 3 et 4.
 
@@ -146,7 +148,7 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
 
 1. **Flasher** `build/grblHAL.uf2` (mode BOOTSEL → glisser-déposer sur le drive `RPI-RP2`).
 2. **Alimenter VMOT** 12-24 V au bornier (en plus de l'USB).
-3. **Vérifier le jumper P_S/IO22** côté WD-DET sur la carte.
+3. **Vérifier le strap P_S/IO22/PROBE** côté `PROBE` sur la carte.
 4. Connecter sur le port USB CDC, ouvrir un terminal série (ex. ioSender, gSender, ou simple `screen`/`putty` à 115200 bauds).
 5. Envoyer `Ctrl-X` (soft reset). Attendre la bannière `GrblHAL 1.1f`.
 6. Envoyer `$RST=$` pour appliquer toutes les valeurs par défaut HotWire4X.
@@ -157,7 +159,7 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
    <Idle|MPos:0.000,0.000,0.000,0.000|Bf:100,1022|FS:0,0|Ov:100,100,100|A:|TLR:0>
    ```
 
-   Si vous voyez `<Alarm|...|Pn:HSE>` ou similaire : un cavalier ou un fil parasite est posé sur GP0/GP1/GP22, ou le jumper P_S/IO22 n'est pas bien positionné.
+   Si vous voyez `<Alarm|...|Pn:HSE>` ou similaire : un cavalier ou un fil parasite est posé sur GP0/GP1/GP22, ou le strap P_S/IO22/PROBE n'est pas bien positionné.
 
 9. Vérifier `$I` :
    - `[BOARD:SKR Pico v1.0 HotWire4X - R.ILTIS]` ✓
@@ -167,7 +169,7 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
     - X-STOP/Y-STOP/Z-STOP/E0-STOP → `Pn:X` / `Pn:Y` / `Pn:Z` / `Pn:A`
     - GP0 → `Pn:H`
     - GP1 → `Pn:S`
-    - WD-DET P_S → `Pn:E`
+    - Connecteur PROBE → `Pn:E`
 
 ---
 

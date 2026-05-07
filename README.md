@@ -48,9 +48,9 @@ Vérifier également que `[NEWOPT:...]` contient `TMC=15` : c'est le mask des 4 
 
 ### Entrée sécurité
 
-| Fonction | Connecteur | Broche signal | GPIO | Caractéristique          |
-| -------- | ---------- | ------------- | ----:| ------------------------ |
-| E-Stop   | **WD-DET** | `P_S`         | GP22 | Opto-couplé sur la carte |
+| Fonction | Connecteur | Broche signal | GPIO | Caractéristique                                  |
+| -------- | ---------- | ------------- | ----:| ------------------------------------------------ |
+| E-Stop   | **PROBE**  | `PROBE`       | GP22 | GPIO brut via strap P_S/IO22/PROBE côté `PROBE`  |
 
 GND disponible sur tous les connecteurs (broche dédiée ou rail commun).
 
@@ -82,54 +82,70 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 
 ## Câblage du bouton E-Stop
 
-L'entrée E-Stop est sur GP22, broche `P_S` du connecteur WD-DET (opto-couplée au niveau de la carte). **Câblage fail-safe obligatoire** : un bouton coup-de-poing à contact **NF (normalement fermé)** entre `P_S` et `GND`.
+L'entrée E-Stop est sur **GP22 brut**, exposé sur le connecteur **PROBE**. Le firmware ne se sert pas de l'opto-coupleur du connecteur `WD-DET` (broche `P_S`) : ce circuit attend un signal **alimenté** issu d'un capteur (typiquement 12-24 V), et un simple bouton-poussoir vers GND ne fait jamais conduire l'opto. La SKR Pico v1.0 prévoit un strap pour rerouter GP22 vers le connecteur PROBE en GPIO brut.
 
-Brochage du connecteur WD-DET (3 broches, sérigraphie BTT SKR Pico v1.0, vérifié sur le pinout officiel `BTT SKR Pico V1.0-PIN.pdf` du dépôt BigTreeTech) :
+### Préparation du strap P_S/IO22/PROBE
 
-| Broche silkscreen | Rôle                                                    |
-| ----------------- | ------------------------------------------------------- |
-| `12/24V`          | Alim active (capteur), non utilisée ici — laisser libre |
-| `GND`             | Masse                                                   |
-| `P_S`             | Signal (Probe Signal), routé en interne vers GP22       |
-
-Câblage :
+La carte porte un strap 3 broches étiqueté `P_S — IO22 — PROBE` à proximité des connecteurs WD-DET et PROBE. La pin centrale est GP22 ; les pins extrêmes sont les destinations (P_S côté opto WD-DET, PROBE côté GPIO direct).
 
 ```
-SKR Pico WD-DET           Bouton coup-de-poing
-+-----------+             (contact NF — normalement fermé)
-| 12/24V    |  (libre)
-| GND   ----+-------------+
-| P_S   ----+--------+    |
-+-----------+        |    |
-                    [bouton NF]
-                  fermé au repos,
-                  ouvert sur appui
+Strap P_S/IO22/PROBE
+[ P_S ]   [ IO22 ]   [ PROBE ]
+            |             |
+            +----[CAVALIER]+   <- position requise (côté PROBE)
+```
+
+Mettre le cavalier sur les **deux pins de droite** (`IO22 ↔ PROBE`). GP22 est alors disponible directement sur le connecteur `PROBE` voisin, avec le pull-up interne du RP2040 actif.
+
+### Brochage du connecteur PROBE
+
+Connecteur 2 broches, sérigraphie BTT SKR Pico v1.0 :
+
+| Broche silkscreen | Rôle                                       |
+| ----------------- | ------------------------------------------ |
+| `PROBE`           | GP22 brut (via le strap décrit ci-dessus)  |
+| `GND`             | Masse                                      |
+
+### Câblage
+
+Bouton coup-de-poing **NO (normalement ouvert)** entre `PROBE` et `GND`. C'est la polarité par défaut du firmware (`$14=70`, bit 6 = E-Stop NO) : aucun réglage CLI à faire.
+
+```
+SKR Pico PROBE           Bouton coup-de-poing
++-----------+            (contact NO — normalement ouvert)
+| PROBE ----+-------+
+| GND   ----+--+    |
++-----------+  |    |
+              [bouton NO]
+            ouvert au repos,
+            fermé sur appui
 ```
 
 Comportement attendu :
 
-- **Au repos** (bouton relâché, contact **fermé**) : `P_S` est tiré à GND par le bouton. grblHAL voit l'entrée comme « pas de halt » et passe en `<Idle|...>` après `$X`.
-- **Sur appui** (contact ouvert) : la ligne flotte haute (pull-up interne du Pico). grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
-- **Câble coupé ou débranché** : ligne flotte haute → comportement identique à un appui sur le bouton → halt automatique. C'est précisément ce qu'apporte le fail-safe.
+- **Au repos** (bouton relâché, contact **ouvert**) : la ligne reste haute via le pull-up interne. grblHAL voit l'entrée comme « pas de halt » et passe en `<Idle|...>` après `$X`.
+- **Sur appui** (contact fermé) : `PROBE` est tiré à GND par le bouton. grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
 
-`CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est donc active dès le boot, sans configuration logicielle additionnelle.
+`CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est active dès le boot, sans configuration logicielle additionnelle.
+
+> **Note fail-safe** : ce câblage NO n'est volontairement **pas fail-safe** (un câble coupé n'est pas détecté). C'est un compromis assumé en contexte amateur fil chaud (cf. fiche `HOTWIRE4X.md`). Pour un câblage NF/fail-safe en environnement industriel : utiliser un bouton NF entre `PROBE` et `GND`, et inverser le bit E-Stop avec `$14=6` (Feed Hold + Cycle Start NO, E-Stop NF).
 
 ### Test de validation (avant câblage du bouton définitif)
 
-Court-circuiter `P_S` à `GND` avec un fil jumper, faire un soft reset (`Ctrl+X`), puis :
+Court-circuiter `PROBE` à `GND` avec un fil jumper, faire un soft reset (`Ctrl+X`), puis envoyer `?` :
 
 ```
-$X       → doit retourner [MSG:Caution: Unlocked] (et non error:79)
-M122     → rapport TMC complet
+?  →  doit retourner <Alarm|...|Pn:E|...>     (E-Stop actif tant que le pont est en place)
 ```
 
-Retirer le pont → l'alarme E-Stop doit revenir au prochain reset. Si c'est conforme, câbler le bouton NF définitif et tu peux ignorer toute configuration de polarité.
+Retirer le pont, soft reset, `?` à nouveau :
 
-### Bouton NO ou polarité inversée
+```
+?  →  <Idle|...|Pn:>                          (plus de E-Stop signalé)
+$X →  [MSG:Caution: Unlocked]
+```
 
-Si tu utilises malgré tout un bouton NO (normalement ouvert), ou si la chaîne est inversée pour une raison quelconque, la polarité du signal E-Stop peut être inversée via `$14=64` (bit 6 = E-Stop). Cette option sera exposée dans l'interface logicielle (case « NO/NC ») — il n'est en principe pas nécessaire de la régler manuellement en CLI.
-
-> **Avertissement** : un câblage NO n'est **pas fail-safe**. Un câble coupé ou débranché ne sera pas détecté (la ligne reste à son état "OK"). À éviter en production, surtout sur une machine industrielle ou éloignée de l'opérateur.
+Si c'est conforme, câbler le bouton NO définitif.
 
 ## Premier démarrage — paramètres `$` recommandés
 
@@ -206,9 +222,9 @@ Toutes les modifications `$xxx=` sont persistées en flash automatiquement. Vér
 
 ## Réactiver le probe plus tard
 
-Dans cette variante, `PROBE_ENABLE 0` est forcé en haut de `boards/btt_skr_pico_10_map.h` car GP22 est utilisé comme E-Stop. Pour rétablir un probe :
+Dans cette variante, `PROBE_ENABLE 0` est forcé en haut de `boards/btt_skr_pico_10_map.h` car GP22 est utilisé comme E-Stop, et le connecteur `PROBE` lui-même sert au câblage du bouton E-Stop (cf. section ci-dessus). Pour rétablir un probe :
 
-1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité. (GP29 SERVO n'est plus disponible : pris par la sortie hotwire PWM.)
+1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité. (GP29 SERVO n'est plus disponible : pris par la sortie hotwire PWM. Le connecteur PROBE physique n'est plus disponible non plus, il porte désormais le bouton E-Stop.)
 2. **Modifier le board map** : retirer la paire `#undef PROBE_ENABLE` / `#define PROBE_ENABLE 0` (en haut du fichier), et ajouter `#define AUXINPUT0_PIN <gpio_choisi>` au-dessus du bloc des AUXINPUT.
 3. **Recompiler** : voir section ci-dessous.
 

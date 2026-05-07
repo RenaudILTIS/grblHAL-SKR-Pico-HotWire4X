@@ -35,12 +35,15 @@
 //     external opto-isolated MOSFET module that switches the hotwire load.
 //     See AUXOUTPUT0_PIN below.
 //   * Hardware E-Stop is mandatory. CONTROL_HALT is enabled by the driver
-//     default (driver.h:160); the E-Stop input is routed to GPIO 22
-//     (WD-DET header), which is opto-coupled at the board level - galvanic
-//     isolation between the field-wired E-Stop loop and the RP2040, noise
-//     immunity on long cable runs, and surge protection. The alternative
-//     pins (GPIO 21 ex-HB, GPIO 29 SERVO) have no isolation and expose the
-//     MCU directly to industrial wiring noise and transients.
+//     default (driver.h:160); the E-Stop input lands on GPIO 22, exposed
+//     directly on the PROBE connector via the on-board P_S/IO22/PROBE
+//     3-pin strap (must be set on the PROBE side, not on the P_S/WD-DET
+//     side). Wiring is a momentary NO push-button between PROBE and GND,
+//     identical to the limit switches; the RP2040 internal pull-up holds
+//     the line high at rest. The opto-coupled WD-DET path (P_S pin) is
+//     unsuitable here because it expects a powered sensor signal, not a
+//     passive switch to GND - a momentary contact never drives the opto
+//     LED, so the input would never trigger.
 //   * Probe is disabled (foam cutting does not probe); this frees GPIO 22
 //     from the default AUXINPUT0 probe assignment for E-Stop.
 #undef  PROBE_ENABLE
@@ -137,21 +140,23 @@
 #define COOLANT_MIST_PIN            AUXOUTPUT4_PIN
 #endif
 
-// E-Stop input on GPIO 22 (WD-DET, opto-coupled at board level).
+// E-Stop input on GPIO 22, exposed on the PROBE connector via the on-board
+// P_S/IO22/PROBE strap (must be set on the PROBE side - see board header).
 // Probe is disabled above to free this pin. GPIO 29 (SERVO) is taken by
 // AUXOUTPUT0 (spindle PWM) so it cannot serve as PWM/E-Stop here.
 #ifndef M3_LIMIT_PIN
 #define AUXINPUT1_PIN               16 // E0 limit
 #else
 #if CONTROL_ENABLE & CONTROL_HALT
-#define AUXINPUT1_PIN               22 // WD-DET (opto-coupled) - E-Stop, see safety policy in board header
+#define AUXINPUT1_PIN               22 // PROBE connector (raw GPIO via P_S/IO22/PROBE strap) - E-Stop
 #endif
 #endif
 
 // Cycle Start (Resume) on GP1 / Feed Hold on GP0 - TFT serial header (UART0,
 // unused since USB is primary). GP1 chosen for Cycle Start because it is the
 // pin adjacent to GND on the 5-pin TFT connector. Direct 3.3V GPIOs with no
-// isolation - NOT suitable for E-Stop, which stays on opto-coupled GP22.
+// isolation - same wiring philosophy as the E-Stop on PROBE: momentary NO
+// push-buttons to GND, internal pull-up keeps the line high at rest.
 #if CONTROL_ENABLE & CONTROL_HALT
 #define AUXINPUT2_PIN               1
 #define AUXINPUT3_PIN               0
