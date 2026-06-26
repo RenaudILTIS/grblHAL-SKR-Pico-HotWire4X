@@ -9,10 +9,10 @@ Variante SERVO du board map `BOARD_BTT_SKR_PICO_10` de grblHAL/RP2040 pour la d�
 Après flash de `build/grblHAL.uf2` (mode BOOTSEL puis copie sur le lecteur RPI-RP2), la commande grblHAL `$I` doit renvoyer une ligne contenant :
 
 ```
-[BOARD:BTT SKR Pico 1.0 SERVO]
+[BOARD:SKR Pico v1.0 HotWire4X - R.ILTIS]
 ```
 
-Si vous voyez `[BOARD:BTT SKR Pico 1.0]` (sans le suffixe « SERVO »), c'est le firmware standard — re-flasher.
+Si vous voyez `[BOARD:BTT SKR Pico 1.0]` ou tout autre nom sans le suffixe « HotWire4X - R.ILTIS », c'est le firmware standard ou une variante antérieure — re-flasher.
 
 Vérifier également que `[NEWOPT:...]` contient `TMC=15` : c'est le mask des 4 drivers TMC2209 ayant répondu en UART. Si `TMC=15` est absent, vérifier l'alimentation 12–24 V du bornier VMOT (cf. encadré en tête de README).
 
@@ -208,7 +208,7 @@ $123=200         ; accélération A
 ```
 $30=1000         ; borne supérieure du réglage possible de la puissance via M3 S...
 $31=0            ; valeur S minimale
-$33=5000         ; fréquence PWM hotwire en Hz (5 kHz = bon compromis)
+$33=200          ; fréquence PWM hotwire en Hz (200 Hz = défaut HotWire4X)
 $34=0            ; duty cycle quand la chauffe est OFF (impératif : 0 %)
 ```
 
