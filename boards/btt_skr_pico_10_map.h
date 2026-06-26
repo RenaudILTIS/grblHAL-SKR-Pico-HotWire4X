@@ -30,6 +30,9 @@
 #define BOARD_NAME "SKR Pico v1.0 HotWire4X - R.ILTIS"
 #define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
 
+#undef DEFAULT_SPINDLE_PWM_FREQ
+#define DEFAULT_SPINDLE_PWM_FREQ      200.0f      // $33: 200 Hz pour fil chaud
+
 // Foam-cutter / hotwire SERVO variant of the BTT SKR Pico 1.0:
 //   * Spindle PWM is routed to the SERVO header (GPIO 29) so it can drive an
 //     external opto-isolated MOSFET module that switches the hotwire load.
