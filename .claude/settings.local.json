@@ -11,7 +11,10 @@
       "Bash(ninja)",
       "Bash(git -C C:/Github/grblHAL_HotWire_Servo status)",
       "Bash(git *)",
-      "Bash(ninja -C /c/Github/grblHAL_HotWire_Servo/build)"
+      "Bash(ninja -C /c/Github/grblHAL_HotWire_Servo/build)",
+      "Bash([ -f \"$CM\" ])",
+      "Bash(/c/Users/renau/.pico-sdk/cmake/v3.31.5/bin/cmake.exe --build build)",
+      "Bash(gh auth *)"
     ]
   }
 }
