@@ -34,7 +34,7 @@
 #ifdef HOTWIRE_HEAT_ON_HB
 #define BOARD_NAME "SKR Pico v1.0 HotWire4X HB - R.ILTIS"
 #else
-#define BOARD_NAME "SKR Pico v1.0 HotWire4X - R.ILTIS"
+#define BOARD_NAME "SKR Pico v1.0 HotWire4X SERVOS - R.ILTIS"
 #endif
 #define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
 

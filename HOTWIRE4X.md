@@ -11,7 +11,7 @@ Ce document est la **fiche de référence** du firmware : identité, fonctionnal
 Après flash de `build/grblHAL.uf2`, la commande `$I` doit renvoyer :
 
 ```
-[BOARD:SKR Pico v1.0 HotWire4X - R.ILTIS]
+[BOARD:SKR Pico v1.0 HotWire4X SERVOS - R.ILTIS]
 ```
 
 Si vous voyez `[BOARD:BTT SKR Pico 1.0 SERVO]` ou autre, c'est un firmware antérieur ou non personnalisé — re-flasher.
@@ -162,7 +162,7 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
    Si vous voyez `<Alarm|...|Pn:HSE>` ou similaire : un cavalier ou un fil parasite est posé sur GP0/GP1/GP22, ou le strap P_S/IO22/PROBE n'est pas bien positionné.
 
 9. Vérifier `$I` :
-   - `[BOARD:SKR Pico v1.0 HotWire4X - R.ILTIS]` ✓
+   - `[BOARD:SKR Pico v1.0 HotWire4X SERVOS - R.ILTIS]` ✓
    - `[NEWOPT:...,TMC=15,...]` ✓
    - `[SIGNALS:HSE]` (capacités présentes : Feed Hold, Cycle Start, E-Stop)
 10. Tester chaque entrée individuellement en posant un cavalier vers GND :

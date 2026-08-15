@@ -11,8 +11,9 @@ Ce firmware est **spécifique et obligatoire** : il configure les 4 axes, la sor
 | Élément | Attendu |
 |---|---|
 | Carte | BTT SKR Pico v1.0 (RP2040) |
-| Firmware | grblHAL — variante HotWire4X |
-| Identification (`$I`) | `[BOARD:SKR Pico v1.0 HotWire4X - R.ILTIS]` |
+| Firmware | grblHAL — variante HotWire4X (SERVOS ou HB, selon la machine) |
+| Identification (`$I`) — variante **SERVOS** | `[BOARD:SKR Pico v1.0 HotWire4X SERVOS - R.ILTIS]` |
+| Identification (`$I`) — variante **HB** | `[BOARD:SKR Pico v1.0 HotWire4X HB - R.ILTIS]` |
 | Drivers moteurs (`$I` → `[NEWOPT:…]`) | contient `TMC=15` (4 drivers TMC2209 détectés) |
 | Liaison PC ↔ machine | USB, port série virtuel, 115200 bauds |
 | Alimentation | Bornier moteur **12–24 V (VMOT)** branché, en plus de l'USB |
