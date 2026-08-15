@@ -157,6 +157,27 @@ target_compile_definitions(grblHAL PUBLIC
     DEFAULT_SPINDLE_PWM_FREQ=200.0f
     TRINAMIC_DEFAULT_MICROSTEPS=32
 )
+
+# HotWire4X heat-output variant selector (option A - two distributable firmwares).
+#   SERVO (default): spindle PWM on GP29 (SERVO header) -> external opto-isolated
+#                    MOSFET module. For wire supplies above 24V / larger tables.
+#   HB             : spindle PWM on GP21 (on-board heated-bed MOSFET). For small
+#                    tables (e.g. MiniCut2D-class) with a short wire powered at
+#                    12-24V, no external module. Same PWM (freq/duty/overrides),
+#                    different output pin. WARNING: no opto-isolation in this path.
+# Build the HB variant with:  cmake -DHOTWIRE_HEAT=HB -B build_hb -S .
+# The generated firmware is copied to build/grblHAL_<variant>.uf2 for download.
+set(HOTWIRE_HEAT "SERVO" CACHE STRING "Hotwire heat output pin: SERVO (GP29, external MOSFET) or HB (GP21, on-board MOSFET)")
+set_property(CACHE HOTWIRE_HEAT PROPERTY STRINGS SERVO HB)
+if(HOTWIRE_HEAT STREQUAL "HB")
+    target_compile_definitions(grblHAL PUBLIC HOTWIRE_HEAT_ON_HB=1)
+    set(HOTWIRE_UF2_NAME "grblHAL_HB.uf2")
+    message(STATUS "HotWire4X heat output: GP21 (on-board HB MOSFET, 12-24V variant)")
+else()
+    set(HOTWIRE_UF2_NAME "grblHAL_SERVO.uf2")
+    message(STATUS "HotWire4X heat output: GP29 (SERVO header, external MOSFET variant)")
+endif()
+
 #target_compile_definitions(grblHAL PUBLIC LITTLEFS_ENABLE=1)
 
 if(ADD_WIFI)
@@ -288,6 +309,14 @@ target_link_libraries(grblHAL PRIVATE
 )
 
 pico_add_extra_outputs(grblHAL)
+
+# Copy the generated .uf2 to a variant-named file for distribution / download.
+add_custom_command(TARGET grblHAL POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE_DIR:grblHAL>/grblHAL.uf2
+        $<TARGET_FILE_DIR:grblHAL>/${HOTWIRE_UF2_NAME}
+    COMMENT "HotWire4X: copying firmware to ${HOTWIRE_UF2_NAME}"
+    VERBATIM)
 
 unset(PICO_BOARD CACHE)
 unset(ADD_WIFI CACHE)

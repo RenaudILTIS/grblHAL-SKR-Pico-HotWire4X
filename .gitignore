@@ -26,6 +26,9 @@ $RECYCLE.BIN/
 
 build
 
+# Variant build folders (e.g. build_hb for the HOTWIRE_HEAT=HB firmware)
+build_*/
+
 #
 # =========================
 # Operating System Files

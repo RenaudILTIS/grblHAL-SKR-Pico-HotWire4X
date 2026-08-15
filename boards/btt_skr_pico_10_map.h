@@ -27,7 +27,15 @@
 #error "Wireless networking is not supported!"
 #endif
 
+// Heat-output variant (selected at build time, see CMakeLists.txt HOTWIRE_HEAT):
+//   default     -> spindle PWM on GP29 (SERVO header, external MOSFET module)
+//   HOTWIRE_HEAT_ON_HB -> spindle PWM on GP21 (on-board heated-bed MOSFET)
+// The board name carries the variant so `$I` identifies the flashed firmware.
+#ifdef HOTWIRE_HEAT_ON_HB
+#define BOARD_NAME "SKR Pico v1.0 HotWire4X HB - R.ILTIS"
+#else
 #define BOARD_NAME "SKR Pico v1.0 HotWire4X - R.ILTIS"
+#endif
 #define BOARD_URL "https://github.com/bigtreetech/SKR-Pico"
 
 #undef DEFAULT_SPINDLE_PWM_FREQ
@@ -106,8 +114,12 @@
 // resistor would drop the voltage below the opto-coupler's forward
 // threshold and the module would fail to switch. Tie the module's GND to
 // the SKR Pico GND. Power the hotwire load (48V) on the module's load side.
-#define AUXOUTPUT0_PORT             GPIO_OUTPUT // Spindle PWM
-#define AUXOUTPUT0_PIN              29 // SERVO header (3.3V) -> external MOSFET opto
+#define AUXOUTPUT0_PORT             GPIO_OUTPUT // Spindle PWM (hotwire heat)
+#ifdef HOTWIRE_HEAT_ON_HB
+#define AUXOUTPUT0_PIN              21 // HB header -> on-board heated-bed MOSFET (12-24V short wire, no external module)
+#else
+#define AUXOUTPUT0_PIN              29 // SERVO header (3.3V) -> external opto-isolated MOSFET module (wire supply >24V)
+#endif
 #define AUXOUTPUT1_PORT             GPIO_OUTPUT // Spindle direction
 #define AUXOUTPUT1_PIN              18 // FAN2 PWM
 #define AUXOUTPUT2_PORT             GPIO_OUTPUT // Spindle enable
