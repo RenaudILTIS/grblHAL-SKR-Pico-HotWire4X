@@ -91,6 +91,19 @@ Câblage de chaque bouton : un poussoir momentané NO entre la pin GPIO et GND. 
 | Coolant Flood | FAN3 | GP20 | 3.3 V |
 | Coolant Mist | HE | GP23 | 3.3 V |
 
+#### Sortie « chauffe en marche » (FAN1) — indicateur exploitable
+
+Le firmware active **GP17 (connecteur FAN1)** en même temps que la chauffe : c'est le signal *Spindle Enable* de grblHAL. `M3` met FAN1 à l'état actif — la LED voisine du connecteur s'allume — et `M5` le désactive.
+
+Ce comportement est **normal et voulu**. La sortie est en tout-ou-rien, indépendante de la puissance : elle brille pareil à `S1` et à `S1000`, elle signale seulement que la chauffe est commandée.
+
+Cette sortie étant commutée par un MOSFET de la carte sur le rail VMOT (12–24 V), elle constitue un **contact « chauffe en marche » automatique**, utilisable tel quel pour :
+
+- un **voyant de sécurité** « fil sous tension » — particulièrement pertinent en fil chaud, où un fil chaud ne se distingue pas visuellement d'un fil froid ;
+- un **ventilateur d'extraction de fumées**, qui démarre et s'arrête exactement en même temps que la chauffe.
+
+Aucun réglage n'est nécessaire : il suffit de câbler la charge sur FAN1. À l'inverse, si FAN1 est déjà affecté à autre chose, garder à l'esprit que cette sortie sera commutée à chaque `M3`/`M5`.
+
 ---
 
 ## Valeurs par défaut (`$$` après `$RST=$`)

@@ -46,6 +46,36 @@ Vérifier également que `[NEWOPT:...]` contient `TMC=15` : c'est le mask des 4 
 | Coolant mist          | HE         | GP23 | 3.3 V                  |
 | GPIO libre            | HB         | GP21 | 3.3 V (sans isolation) |
 
+### Sortie « chauffe en marche » (FAN1) — voyant / extraction
+
+En plus du PWM de chauffe, le firmware pilote **GP17 sur le connecteur FAN1** : c'est le signal *Spindle Enable* de grblHAL, activé par `M3` et désactivé par `M5`. La LED voisine du connecteur FAN1 s'allume donc dès que la chauffe est commandée — **c'est normal**, ce n'est pas un défaut.
+
+Caractéristiques :
+
+- **Tout-ou-rien** : l'état ne dépend pas de la puissance demandée (identique à `M3 S1` et `M3 S1000`), il indique seulement « chauffe activée ».
+- **Commutée par MOSFET sur le rail VMOT (12–24 V)**, comme les autres sorties FAN/HE/HB de la carte.
+- **Synchronisée automatiquement** avec la chauffe, sans aucun réglage ni G-code supplémentaire.
+
+Cela en fait un contact « chauffe en marche » directement exploitable :
+
+```
+SKR Pico FAN1                     Charge 12-24 V
++-------------+                   (voyant ou ventilateur)
+| V+  --------+---------------------- (+)
+| OUT --------+---------------------- (-)
++-------------+
+   commuté à la masse par le MOSFET quand M3 est actif
+```
+
+Usages typiques en fil chaud :
+
+- **Voyant de sécurité « fil sous tension »** — essentiel car un fil chaud est visuellement identique à un fil froid.
+- **Ventilateur d'extraction de fumées**, qui démarre et s'arrête exactement en même temps que la chauffe.
+
+Respecter le calibre de la sortie FAN1 (courant modeste, de l'ordre de l'ampère) : pour une charge plus lourde, passer par un relais ou un module MOSFET piloté depuis cette sortie.
+
+> Si FAN1 est déjà affecté à un autre usage sur votre machine, garder à l'esprit que cette sortie est commutée à chaque `M3`/`M5`.
+
 ### Entrée sécurité
 
 | Fonction | Connecteur | Broche signal | GPIO | Caractéristique                                  |
