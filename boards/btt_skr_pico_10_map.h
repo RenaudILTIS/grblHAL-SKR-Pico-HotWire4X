@@ -45,8 +45,9 @@
 //   * Spindle PWM is routed to the SERVO header (GPIO 29) so it can drive an
 //     external opto-isolated MOSFET module that switches the hotwire load.
 //     See AUXOUTPUT0_PIN below.
-//   * Hardware E-Stop is mandatory. CONTROL_HALT is enabled by the driver
-//     default (driver.h:160); the E-Stop input lands on GPIO 22, exposed
+//   * The HotWire4X STOP button is the safety-door input (no E-stop input
+//     is compiled; a real emergency stop cuts the supplies). It lands on
+//     GPIO 22, exposed
 //     directly on the PROBE connector via the on-board P_S/IO22/PROBE
 //     3-pin strap (must be set on the PROBE side, not on the P_S/WD-DET
 //     side). Wiring is a momentary NO push-button between PROBE and GND,
@@ -56,7 +57,7 @@
 //     passive switch to GND - a momentary contact never drives the opto
 //     LED, so the input would never trigger.
 //   * Probe is disabled (foam cutting does not probe); this frees GPIO 22
-//     from the default AUXINPUT0 probe assignment for E-Stop.
+//     from the default AUXINPUT0 probe assignment for the STOP button.
 #undef  PROBE_ENABLE
 #define PROBE_ENABLE                0
 
@@ -155,29 +156,36 @@
 #define COOLANT_MIST_PIN            AUXOUTPUT4_PIN
 #endif
 
-// E-Stop input on GPIO 22, exposed on the PROBE connector via the on-board
-// P_S/IO22/PROBE strap (must be set on the PROBE side - see board header).
-// Probe is disabled above to free this pin. GPIO 29 (SERVO) is taken by
-// AUXOUTPUT0 (spindle PWM) so it cannot serve as PWM/E-Stop here.
+// HotWire4X STOP button on GPIO 22 - the SAFETY DOOR input, not an E-stop
+// (HotWire4X docs/stop_button.md): it stops the motion with a controlled
+// deceleration, turns the heat off once stopped and keeps the motors
+// energized ($1); the sender then cancels the rest. A real emergency stop
+// cuts the motor and heat supplies. No reset / E-stop input is compiled.
+// Exposed on the PROBE connector via the on-board P_S/IO22/PROBE strap (must
+// be set on the PROBE side - see board header). Probe is disabled above to
+// free this pin. GPIO 29 (SERVO) is taken by AUXOUTPUT0 (spindle PWM).
+// SAFETY_DOOR_ENABLE is set in my_machine.h.
 #ifndef M3_LIMIT_PIN
 #define AUXINPUT1_PIN               16 // E0 limit
 #else
-#if CONTROL_ENABLE & CONTROL_HALT
-#define AUXINPUT1_PIN               22 // PROBE connector (raw GPIO via P_S/IO22/PROBE strap) - E-Stop
+#if SAFETY_DOOR_ENABLE
+#define AUXINPUT1_PIN               22 // PROBE connector (raw GPIO via P_S/IO22/PROBE strap) - STOP button
 #endif
+#endif
+#if SAFETY_DOOR_ENABLE && defined(AUXINPUT1_PIN)
+#define SAFETY_DOOR_PIN             AUXINPUT1_PIN
 #endif
 
 // Cycle Start (Resume) on GP1 / Feed Hold on GP0 - TFT serial header (UART0,
 // unused since USB is primary). GP1 chosen for Cycle Start because it is the
 // pin adjacent to GND on the 5-pin TFT connector. Direct 3.3V GPIOs with no
-// isolation - same wiring philosophy as the E-Stop on PROBE: momentary NO
+// isolation - same wiring philosophy as the STOP on PROBE: momentary NO
 // push-buttons to GND, internal pull-up keeps the line high at rest.
 #if CONTROL_ENABLE & CONTROL_HALT
 #define AUXINPUT2_PIN               1
 #define AUXINPUT3_PIN               0
 #undef CONTROL_ENABLE
-#define CONTROL_ENABLE              (CONTROL_HALT|CONTROL_CYCLE_START|CONTROL_FEED_HOLD)
-#define RESET_PIN                   AUXINPUT1_PIN
+#define CONTROL_ENABLE              (CONTROL_CYCLE_START|CONTROL_FEED_HOLD)
 #define CYCLE_START_PIN             AUXINPUT2_PIN
 #define FEED_HOLD_PIN               AUXINPUT3_PIN
 #endif

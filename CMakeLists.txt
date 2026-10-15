@@ -124,6 +124,10 @@ target_compile_definitions(grblHAL PUBLIC NEW_FATFS)
 # while driver code sees N_AXIS=4. Mirror my_machine.h's value here so every
 # translation unit agrees. Keep this in sync with my_machine.h:N_AXIS.
 target_compile_definitions(grblHAL PUBLIC N_AXIS=4)
+# HotWire4X STOP button on the safety-door input (GP22, board map): mirrored
+# here for the same reason, so grbl/*.c and the driver both see the door.
+# Keep this in sync with my_machine.h:SAFETY_DOOR_ENABLE.
+target_compile_definitions(grblHAL PUBLIC SAFETY_DOOR_ENABLE=1)
 
 # HotWire4X per-machine defaults (R. ILTIS).
 # Same root cause as N_AXIS: grbl/settings.c reads DEFAULT_* via grbl/config.h,
@@ -153,7 +157,7 @@ target_compile_definitions(grblHAL PUBLIC
     DEFAULT_Z_CURRENT=800.0f
     DEFAULT_A_CURRENT=800.0f
     DEFAULT_LIMIT_SIGNALS_INVERT_MASK=15
-    DEFAULT_CONTROL_SIGNALS_INVERT_MASK=70
+    DEFAULT_CONTROL_SIGNALS_INVERT_MASK=14
     DEFAULT_SPINDLE_PWM_FREQ=200.0f
     TRINAMIC_DEFAULT_MICROSTEPS=32
 )

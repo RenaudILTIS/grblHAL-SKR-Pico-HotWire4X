@@ -110,7 +110,7 @@
 //#define PROBE_ENABLE            0 // Default enabled, remove comment to disable probe input.
 //#define PROBE2_ENABLE           1 // Enable second regular probe input, depending on the board the input assigned may be predefined.
 //#define TOOLSETTER_ENABLE       1 // Enable toolsetter input, depending on the board the input assigned may be predefined.
-//#define SAFETY_DOOR_ENABLE      1
+#define SAFETY_DOOR_ENABLE      1 // HotWire4X STOP button on GP22 (board map) - not an E-stop
 //#define MOTOR_FAULT_ENABLE      1
 //#define MOTOR_WARNING_ENABLE    1
 //#define PROBE_DISCONNECT_ENABLE 1

@@ -80,7 +80,7 @@ Respecter le calibre de la sortie FAN1 (courant modeste, de l'ordre de l'ampère
 
 | Fonction | Connecteur | Broche signal | GPIO | Caractéristique                                  |
 | -------- | ---------- | ------------- | ----:| ------------------------------------------------ |
-| E-Stop   | **PROBE**  | `PROBE`       | GP22 | GPIO brut via strap P_S/IO22/PROBE côté `PROBE`  |
+| STOP     | **PROBE**  | `PROBE`       | GP22 | Entrée porte, GPIO brut via strap côté `PROBE`   |
 
 GND disponible sur tous les connecteurs (broche dédiée ou rail commun).
 
@@ -110,9 +110,11 @@ SKR Pico SERVO header                Module MOSFET opto-isolé
 - **GND commun obligatoire** entre la SKR Pico et la masse logique du module pour que le signal IN ait une référence.
 - La masse 48 V de l'alim de chauffe peut rester séparée ; c'est tout l'intérêt de l'opto-isolation.
 
-## Câblage du bouton E-Stop
+## Câblage du bouton STOP
 
-L'entrée E-Stop est sur **GP22 brut**, exposé sur le connecteur **PROBE**. Le firmware ne se sert pas de l'opto-coupleur du connecteur `WD-DET` (broche `P_S`) : ce circuit attend un signal **alimenté** issu d'un capteur (typiquement 12-24 V), et un simple bouton-poussoir vers GND ne fait jamais conduire l'opto. La SKR Pico v1.0 prévoit un strap pour rerouter GP22 vers le connecteur PROBE en GPIO brut.
+Le bouton STOP de HotWire4X est l'entrée **porte** (safety door) de grblHAL : il arrête le mouvement en freinant, coupe la chauffe et garde les moteurs sous tension. Ce n'est **pas** un arrêt d'urgence (aucune entrée E-Stop n'est compilée) : un vrai arrêt d'urgence coupe l'alimentation des moteurs et de la chauffe.
+
+L'entrée STOP est sur **GP22 brut**, exposé sur le connecteur **PROBE**. Le firmware ne se sert pas de l'opto-coupleur du connecteur `WD-DET` (broche `P_S`) : ce circuit attend un signal **alimenté** issu d'un capteur (typiquement 12-24 V), et un simple bouton-poussoir vers GND ne fait jamais conduire l'opto. La SKR Pico v1.0 prévoit un strap pour rerouter GP22 vers le connecteur PROBE en GPIO brut.
 
 ### Préparation du strap P_S/IO22/PROBE
 
@@ -138,10 +140,10 @@ Connecteur 2 broches, sérigraphie BTT SKR Pico v1.0 :
 
 ### Câblage
 
-Bouton coup-de-poing **NO (normalement ouvert)** entre `PROBE` et `GND`. C'est la polarité par défaut du firmware (`$14=70`, bit 6 = E-Stop NO) : aucun réglage CLI à faire.
+Bouton-poussoir **NO (normalement ouvert)** entre `PROBE` et `GND`. C'est la polarité par défaut du firmware (`$14=14`, bit 3 = porte NO) : aucun réglage CLI à faire.
 
 ```
-SKR Pico PROBE           Bouton coup-de-poing
+SKR Pico PROBE           Bouton STOP
 +-----------+            (contact NO — normalement ouvert)
 | PROBE ----+-------+
 | GND   ----+--+    |
@@ -153,26 +155,26 @@ SKR Pico PROBE           Bouton coup-de-poing
 
 Comportement attendu :
 
-- **Au repos** (bouton relâché, contact **ouvert**) : la ligne reste haute via le pull-up interne. grblHAL voit l'entrée comme « pas de halt » et passe en `<Idle|...>` après `$X`.
-- **Sur appui** (contact fermé) : `PROBE` est tiré à GND par le bouton. grblHAL déclenche `Alarm:1` (E-Stop), coupe la chauffe et arrête tout mouvement.
+- **Au repos** (bouton relâché, contact **ouvert**) : la ligne reste haute via le pull-up interne. grblHAL voit la porte fermée et reste en `<Idle|...>`.
+- **Sur appui** (contact fermé) : `PROBE` est tiré à GND par le bouton. grblHAL freine jusqu'à l'arrêt, coupe la chauffe et passe en `Door` (pas d'alarme).
 
-`CONTROL_HALT` est lié à `RESET_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée E-Stop est active dès le boot, sans configuration logicielle additionnelle.
+`SAFETY_DOOR_ENABLE` (`my_machine.h`, recopié dans `CMakeLists.txt`) lie `SAFETY_DOOR_PIN = AUXINPUT1_PIN = GP22` dans le board map ; l'entrée est active dès le boot. `$61` (options de la porte) doit rester à 0.
 
-> **Note fail-safe** : ce câblage NO n'est volontairement **pas fail-safe** (un câble coupé n'est pas détecté). C'est un compromis assumé en contexte amateur fil chaud (cf. fiche `HOTWIRE4X.md`). Pour un câblage NF/fail-safe en environnement industriel : utiliser un bouton NF entre `PROBE` et `GND`, et inverser le bit E-Stop avec `$14=6` (Feed Hold + Cycle Start NO, E-Stop NF).
+> **Note fail-safe** : ce câblage NO n'est volontairement **pas fail-safe** (un câble coupé n'est pas détecté). C'est un compromis assumé en contexte amateur fil chaud (cf. fiche `HOTWIRE4X.md`). Pour un câblage NF/fail-safe en environnement industriel : utiliser un bouton NF entre `PROBE` et `GND`, et retirer le bit de la porte avec `$14=6` (Feed Hold + Cycle Start NO, STOP NF).
 
 ### Test de validation (avant câblage du bouton définitif)
 
 Court-circuiter `PROBE` à `GND` avec un fil jumper, faire un soft reset (`Ctrl+X`), puis envoyer `?` :
 
 ```
-?  →  doit retourner <Alarm|...|Pn:E|...>     (E-Stop actif tant que le pont est en place)
+?  →  doit retourner <Door:1|...|Pn:D|...>    (STOP actif tant que le pont est en place)
 ```
 
 Retirer le pont, soft reset, `?` à nouveau :
 
 ```
-?  →  <Idle|...|Pn:>                          (plus de E-Stop signalé)
-$X →  [MSG:Caution: Unlocked]
+?  →  <Door:0|...>                           (bouton relâché, machine arrêtée)
+Ctrl+X, puis ?  →  <Idle|...|Pn:>
 ```
 
 Si c'est conforme, câbler le bouton NO définitif.
@@ -252,13 +254,13 @@ Toutes les modifications `$xxx=` sont persistées en flash automatiquement. Vér
 
 ## Réactiver le probe plus tard
 
-Dans cette variante, `PROBE_ENABLE 0` est forcé en haut de `boards/btt_skr_pico_10_map.h` car GP22 est utilisé comme E-Stop, et le connecteur `PROBE` lui-même sert au câblage du bouton E-Stop (cf. section ci-dessus). Pour rétablir un probe :
+Dans cette variante, `PROBE_ENABLE 0` est forcé en haut de `boards/btt_skr_pico_10_map.h` car GP22 est utilisé par le bouton STOP, et le connecteur `PROBE` lui-même sert à son câblage (cf. section ci-dessus). Pour rétablir un probe :
 
-1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité. (GP29 SERVO n'est plus disponible : pris par la sortie hotwire PWM. Le connecteur PROBE physique n'est plus disponible non plus, il porte désormais le bouton E-Stop.)
+1. **Choisir un autre GPIO libre** comme entrée probe (par exemple GP21 ex-HB). La carte ne fournit pas d'opto pour cette entrée — câbler un opto externe est recommandé en environnement bruité. (GP29 SERVO n'est plus disponible : pris par la sortie hotwire PWM. Le connecteur PROBE physique n'est plus disponible non plus, il porte désormais le bouton STOP.)
 2. **Modifier le board map** : retirer la paire `#undef PROBE_ENABLE` / `#define PROBE_ENABLE 0` (en haut du fichier), et ajouter `#define AUXINPUT0_PIN <gpio_choisi>` au-dessus du bloc des AUXINPUT.
 3. **Recompiler** : voir section ci-dessous.
 
-Renoncer à l'E-Stop matériel pour récupérer GP22 comme probe est déconseillé en production.
+Renoncer au bouton STOP pour récupérer GP22 comme probe est déconseillé en production.
 
 ## Recompiler après modification
 
@@ -274,10 +276,22 @@ Depuis le dossier du projet, en CMD :
 "%USERPROFILE%\.pico-sdk\cmake\v3.31.5\bin\cmake.exe" --build build
 ```
 
-Sortie : `build\grblHAL.uf2` (~520 ko). Flasher en mode BOOTSEL :
+Sortie : `build\grblHAL.uf2` (~530 ko), copié en `build\grblHAL_SERVOS.uf2`. Variante HB (sortie GP21) dans un sous-dossier, lui aussi ignoré par git :
 
 ```cmd
-copy /B build\grblHAL.uf2 R:\
+"%USERPROFILE%\.pico-sdk\cmake\v3.31.5\bin\cmake.exe" -G Ninja ^
+  -DCMAKE_MAKE_PROGRAM=%USERPROFILE%/.pico-sdk/ninja/v1.12.1/ninja.exe ^
+  -DHOTWIRE_HEAT=HB -B build\hb -S .
+
+"%USERPROFILE%\.pico-sdk\cmake\v3.31.5\bin\cmake.exe" --build build\hb
+```
+
+Les deux firmwares à jour sont versionnés dans `release\` (`grblHAL_SERVOS-HotWire4X.uf2`, `grblHAL_HB-HotWire4X.uf2`) — les mêmes fichiers que `firmwares\` de HotWire4X : après une recompilation, recopier les deux `.uf2` dans les deux dossiers.
+
+Flasher en mode BOOTSEL :
+
+```cmd
+copy /B release\grblHAL_SERVOS-HotWire4X.uf2 R:\
 ```
 
 (remplacer `R:` par la lettre du lecteur `RPI-RP2` qui apparaît au branchement USB en mode bootloader.)

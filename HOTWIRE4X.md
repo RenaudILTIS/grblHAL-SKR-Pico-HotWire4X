@@ -27,11 +27,11 @@ Le rapport `[NEWOPT:...]` doit également contenir `TMC=15` (4 drivers TMC2209 r
 | **4 axes** | X, Y, Z, A (4ᵉ axe sur le port E0) — kinematique cartésienne, les deux tours pilotent indépendamment |
 | **Drivers TMC2209 UART** | Courant + microsteps configurables au runtime via `$140-$143` et `$150-$153`, monitoring `M122` |
 | **Sortie chauffe PWM** | Sur le header SERVO (GP29), pour module MOSFET externe opto-isolé |
-| **Arrêt d'urgence** | Sur le header PROBE (GP22), bouton-poussoir NO direct vers GND |
+| **Bouton STOP** | Sur le header PROBE (GP22), bouton-poussoir NO direct vers GND. C'est l'entrée « porte » (safety door) : le mouvement freine jusqu'à l'arrêt, la chauffe est coupée, les moteurs restent sous tension (selon `$1`). Ce n'est **pas** un arrêt d'urgence : un vrai arrêt d'urgence coupe l'alimentation des moteurs et de la chauffe |
 | **Bouton Cycle Start (Resume)** | Sur le header TFT, pin GP1 |
 | **Bouton Feed Hold (pause)** | Sur le header TFT, pin GP0 |
-| **Polarité par défaut NO** | Tous les boutons et fins de course sont configurés en normalement-ouvert (`$5=15`, `$14=70`) — câblage direct vers GND, plug-and-play avec des boutons-poussoir grand public |
-| **Probe désactivé** | GP22 est dédié à l'E-Stop ; le probe peut être réactivé sur un autre GPIO libre après modification (voir README) |
+| **Polarité par défaut NO** | Tous les boutons et fins de course sont configurés en normalement-ouvert (`$5=15`, `$14=14`) — câblage direct vers GND, plug-and-play avec des boutons-poussoir grand public |
+| **Probe désactivé** | GP22 est dédié au bouton STOP ; le probe peut être réactivé sur un autre GPIO libre après modification (voir README) |
 
 ---
 
@@ -41,7 +41,7 @@ Le rapport `[NEWOPT:...]` doit également contenir `TMC=15` (4 drivers TMC2209 r
 
 La SKR Pico v1.0 possède un **strap 3 broches** étiqueté `P_S/IO22/PROBE` qui route GP22 soit vers l'entrée opto-couplée du connecteur `WD-DET` (broche `P_S`), soit en direct (sans isolation) vers le connecteur `PROBE`.
 
-**Position requise pour ce firmware :** strap côté **PROBE**, c'est-à-dire reliant la pin centrale `IO22` à la pin `PROBE`. GP22 est alors disponible en GPIO brut sur le connecteur `PROBE`, où l'on câble le bouton E-Stop entre `PROBE` et `GND` (cf. tableau ci-dessous).
+**Position requise pour ce firmware :** strap côté **PROBE**, c'est-à-dire reliant la pin centrale `IO22` à la pin `PROBE`. GP22 est alors disponible en GPIO brut sur le connecteur `PROBE`, où l'on câble le bouton STOP entre `PROBE` et `GND` (cf. tableau ci-dessous).
 
 L'entrée opto-couplée `P_S` du connecteur `WD-DET` n'est **pas utilisable pour un bouton-poussoir passif** : elle attend un signal alimenté (typiquement 12-24 V) issu d'un capteur, et un simple poussoir vers GND ne fait jamais conduire l'opto-coupleur. Le routage côté `PROBE` contourne ce circuit d'entrée et ramène GP22 sur une broche directement utilisable, comme les entrées de fins de course.
 
@@ -76,7 +76,7 @@ Pour toute opération de configuration des drivers (changement de courant, de mi
 |---|---|---|---|
 | **Cycle Start** (Resume) | TFT (5 broches 2.54mm) | RXD0 | GP1 |
 | **Feed Hold** (pause) | TFT (5 broches 2.54mm) | TXD0 | GP0 |
-| **E-Stop** | PROBE | PROBE | GP22 (GPIO brut, pull-up interne) |
+| **STOP** (entrée porte) | PROBE | PROBE | GP22 (GPIO brut, pull-up interne) |
 
 Brochage du header TFT : `[+5V] [+5V] [GND] [RXD0=GP1] [TXD0=GP0]`. GP1 (Cycle Start) est en pin 4, adjacent à la GND centrale (pin 3), ce qui permet de câbler un bouton Cycle Start avec un simple fil 2 broches sur les pins 3 et 4.
 
@@ -137,11 +137,11 @@ Toutes les valeurs ci-dessous sont compilées dans le firmware et appliquées su
 | Paramètre | Valeur | Signification |
 |---|---:|---|
 | `$5` | 15 | Limites X/Y/Z/A toutes en normalement-ouvert |
-| `$14` | 70 | Feed Hold + Cycle Start + E-Stop tous en normalement-ouvert |
+| `$14` | 14 | Feed Hold + Cycle Start + STOP (porte) tous en normalement-ouvert |
 
-Bits de `$14` : `64` (E-Stop) + `4` (Cycle Start) + `2` (Feed Hold) = `70`.
+Bits de `$14` : `8` (porte = STOP) + `4` (Cycle Start) + `2` (Feed Hold) = `14`. Il n'y a plus d'entrée E-Stop : grblHAL ignore le bit `64` (HotWire4X envoie `78`, la carte garde `14`).
 
-> Pour un E-Stop fail-safe NC (recommandé en milieu industriel mais pas nécessaire en amateur), définir `$14=6` au runtime — cela conserve Feed Hold et Cycle Start en NO et bascule l'E-Stop en NC.
+> Pour un bouton STOP fail-safe NC, définir `$14=6` au runtime (ou cocher « Bouton STOP » dans la colonne NC de HotWire4X) — cela conserve Feed Hold et Cycle Start en NO et bascule le STOP en NC.
 
 ### Homing
 
@@ -165,24 +165,24 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
 4. Connecter sur le port USB CDC, ouvrir un terminal série (ex. ioSender, gSender, ou simple `screen`/`putty` à 115200 bauds).
 5. Envoyer `Ctrl-X` (soft reset). Attendre la bannière `GrblHAL 1.1f`.
 6. Envoyer `$RST=$` pour appliquer toutes les valeurs par défaut HotWire4X.
-7. **Reboot complet** (couper USB **et** VMOT, attendre ~5 s, rebrancher). Indispensable pour que les masques d'inversion `$5=15` et `$14=70` soient appliqués au niveau du peripheral GPIO — un Ctrl-X ne suffit pas.
+7. **Reboot complet** (couper USB **et** VMOT, attendre ~5 s, rebrancher). Indispensable pour que les masques d'inversion `$5=15` et `$14=14` soient appliqués au niveau du peripheral GPIO — un Ctrl-X ne suffit pas.
 8. Au reboot, envoyer `?` directement. L'état attendu est :
 
    ```
    <Idle|MPos:0.000,0.000,0.000,0.000|Bf:100,1022|FS:0,0|Ov:100,100,100|A:|TLR:0>
    ```
 
-   Si vous voyez `<Alarm|...|Pn:HSE>` ou similaire : un cavalier ou un fil parasite est posé sur GP0/GP1/GP22, ou le strap P_S/IO22/PROBE n'est pas bien positionné.
+   Si vous voyez `<Door:1|...|Pn:D>`, `Pn:H`, `Pn:S` ou similaire : un cavalier ou un fil parasite est posé sur GP0/GP1/GP22, ou le strap P_S/IO22/PROBE n'est pas bien positionné.
 
 9. Vérifier `$I` :
    - `[BOARD:SKR Pico v1.0 HotWire4X SERVOS - R.ILTIS]` ✓
    - `[NEWOPT:...,TMC=15,...]` ✓
-   - `[SIGNALS:HSE]` (capacités présentes : Feed Hold, Cycle Start, E-Stop)
+   - `[SIGNALS:...]` contient `H`, `S` et `D` (capacités présentes : Feed Hold, Cycle Start, porte = STOP), et plus `E`
 10. Tester chaque entrée individuellement en posant un cavalier vers GND :
     - X-STOP/Y-STOP/Z-STOP/E0-STOP → `Pn:X` / `Pn:Y` / `Pn:Z` / `Pn:A`
     - GP0 → `Pn:H`
     - GP1 → `Pn:S`
-    - Connecteur PROBE → `Pn:E`
+    - Connecteur PROBE → `Pn:D`
 
 ---
 
@@ -192,13 +192,15 @@ Paramètre modifiable au runtime, exprimé en millisecondes :
 
 - **Bouton Feed Hold** (GP0) → état `Run` → `Hold` → mouvement décéléré et mis en pause, chauffe maintenue
 - **Bouton Cycle Start** (GP1) après un Feed Hold → état `Hold` → `Run` → mouvement repris
-- **Bouton E-Stop** (GP22) → arrêt immédiat tous moteurs + chauffe coupée + état `Alarm:1`
+- **Bouton STOP** (GP22) → mouvement freiné jusqu'à l'arrêt, chauffe coupée, moteurs sous tension (selon `$1`), état `Door` : `Door:2` pendant le freinage, `Door:1` bouton enfoncé, `Door:0` bouton relâché. Pas d'alarme, la position est conservée.
 
-### Pour sortir d'un E-Stop
+### Après un STOP
 
-1. Relâcher le bouton E-Stop physique
-2. `Ctrl-X` (soft reset) ou `$X` (unlock)
+1. Relâcher le bouton (état `Door:0`)
+2. `Ctrl-X` (soft reset) : annule le reste du programme, sans alarme puisque la machine est arrêtée — HotWire4X le fait tout seul
 3. État revient à `Idle`
+
+`~` (Cycle Start) reprendrait le programme suspendu après le délai `$392` ; HotWire4X ne s'en sert pas : il recrée lui-même la suite de la découpe.
 
 ---
 
