@@ -1,3 +1,29 @@
+# grblHAL for BTT SKR Pico v1.0 — HotWire4X edition
+
+**EN** — grblHAL firmware for the BigTreeTech SKR Pico v1.0, set up for 4-axis hot wire
+CNC cutting with [HotWire4X](https://hotwire4x.com). Two builds, one per heat output:
+
+- `grblHAL_SERVOS-HotWire4X.uf2`: heat PWM on the SERVO header (GP29), for an external
+  MOSFET module;
+- `grblHAL_HB-HotWire4X.uf2`: heat PWM on the board's HB output (GP21).
+
+Ready-to-flash files: **[latest release](https://github.com/RenaudILTIS/grblHAL-SKR-Pico-HotWire4X/releases/latest)**.
+Wiring and flashing, step by step: [hotwire4x.com/requirements/skr-pico](https://hotwire4x.com/requirements/skr-pico).
+
+Based on [grblHAL/RP2040](https://github.com/grblHAL/RP2040) by Terje Io, under the GNU
+GPL v3 (see `COPYING`). This repository holds the complete source of the published builds.
+
+**FR** — Firmware grblHAL pour la BigTreeTech SKR Pico v1.0, configuré pour la découpe CNC
+par fil chaud 4 axes avec [HotWire4X](https://hotwire4x.com/fr). Deux versions, une par
+sortie de chauffe : `grblHAL_SERVOS-HotWire4X.uf2` (connecteur SERVO, GP29, module MOSFET
+externe) et `grblHAL_HB-HotWire4X.uf2` (sortie HB de la carte, GP21). Fichiers prêts à
+flasher : **[dernière release](https://github.com/RenaudILTIS/grblHAL-SKR-Pico-HotWire4X/releases/latest)**.
+Câblage et flashage pas à pas : [hotwire4x.com/fr/prerequis/skr-pico](https://hotwire4x.com/fr/prerequis/skr-pico).
+Licence GNU GPL v3 (voir `COPYING`). La suite de ce document est la documentation technique,
+en français.
+
+---
+
 # grblHAL Hotwire SERVO — BTT SKR Pico v1.0
 
 Variante SERVO du board map `BOARD_BTT_SKR_PICO_10` de grblHAL/RP2040 pour la découpe par fil chaud (foam cutter), 4 axes, drivers TMC2209 en UART, sortie de chauffe sur le connecteur SERVO via module MOSFET externe.

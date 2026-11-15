@@ -36,3 +36,6 @@ build_*/
 
 .vscode/settings.json
 .vscode/c_cpp_properties.json
+
+# Réglages locaux de Claude Code
+.claude/
